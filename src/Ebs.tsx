@@ -405,7 +405,7 @@ export function EbsPage() {
                     <p>
                       콘텐츠 발행일 {date} · {durationLabel(course)}
                     </p>
-                    {day.entries.length > 0 && (
+                    {day.completed && (
                       <p>
                         최근 실제 청취일 {latestDate ?? "미입력"} · 청취 기록{" "}
                         {day.entries.length}건
@@ -444,7 +444,7 @@ export function EbsPage() {
                             ? "다시 누르면 기존 날짜·시간으로 복원됩니다"
                             : `버튼을 누른 날 · 기본 ${EBS_DEFAULT_MINUTES}분`}
                       </small>
-                      {day.entries.length > 0 && (
+                      {day.completed && (
                         <div className="ebs-secondary-actions">
                           <button
                             className="text-button"
@@ -470,7 +470,7 @@ export function EbsPage() {
                         </div>
                       )}
                     </div>
-                    {day.entries.length > 0 && (
+                    {day.completed && (
                       <details className="ebs-history">
                         <summary>청취 이력 {day.entries.length}건 보기</summary>
                         {day.entries.map((entry) => (
