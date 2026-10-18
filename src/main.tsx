@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import {
   BrowserRouter,
@@ -13,7 +13,6 @@ import {
   ArrowLeft,
   ArrowRight,
   LayoutGrid,
-  BriefcaseBusiness,
   BookOpen,
   GraduationCap,
   Globe2,
@@ -33,11 +32,13 @@ import {
   initialTasks,
   subjects,
   week,
+  learningCategories,
+  certificationCheckpoints,
   type Metric,
   type Area,
 } from "./data";
 import "./styles.css";
-const icons = [BriefcaseBusiness, BookOpen, GraduationCap, Globe2, Layers3];
+
 function Progress({
   done,
   total,
@@ -101,6 +102,16 @@ function App() {
   const [tasks, setTasks] = useState(initialTasks);
   const [filter, setFilter] = useState("all");
   const location = useLocation();
+  useEffect(() => {
+    if (location.hash) {
+      const target = document.getElementById(location.hash.slice(1));
+      target?.scrollIntoView({ block: "center" });
+      target?.focus({ preventScroll: true });
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [location.pathname, location.hash, location.key]);
+
   const completed = tasks.filter((t) => t.done);
   const study = completed
     .filter((t) => t.type === "study")
@@ -132,17 +143,27 @@ function App() {
             <LayoutGrid size={19} />
             전체 보기
           </NavLink>
-          {areas.map((a, i) => {
-            const Icon = icons[i];
+          {learningCategories.map((category) => {
+            const Icon = category.id === "languages" ? Globe2 : GraduationCap;
+            const isCurrent =
+              location.pathname.startsWith(`/${category.id}`) ||
+              location.pathname === `/${category.mainId}`;
             return (
-              <NavLink key={a.id} to={`/${a.id}`}>
+              <NavLink
+                key={category.id}
+                to={`/${category.id}`}
+                className={() => (isCurrent ? "active" : "")}
+              >
                 <Icon size={19} />
-                {a.title}
-                <span className={`nav-dot ${a.color}`} />
+                {category.title}
               </NavLink>
             );
           })}
           <div className="nav-divider" />
+          <NavLink to="/system">
+            <Layers3 size={19} />
+            자료 · Task 준비
+          </NavLink>
           <NavLink to="/activity">
             <ChartNoAxesColumnIncreasing size={19} />
             학습 활동
@@ -173,9 +194,11 @@ function App() {
                 ? "전체 보기"
                 : location.pathname === "/activity"
                   ? "학습 활동"
-                  : [...areas, ...languages].find((a) =>
-                      location.pathname.endsWith(a.id),
-                    )?.title || "상세 보기"}
+                  : location.pathname === "/certifications"
+                    ? "자격증"
+                    : [...areas, ...languages].find((a) =>
+                        location.pathname.endsWith(a.id),
+                      )?.title || "상세 보기"}
             </strong>
           </span>
           <span className="sample">
@@ -247,9 +270,9 @@ function App() {
                     <Stat
                       icon={Target}
                       label="Active Projects"
-                      value="3"
-                      unit="개 영역"
-                      note="커리어 · 영어 · 관세사"
+                      value={String(learningCategories.length)}
+                      unit="개 집중 목표"
+                      note="영어 · 관세사"
                     />
                     <Stat
                       icon={CheckCheck}
@@ -262,11 +285,14 @@ function App() {
                   <SectionTitle
                     title="나의 배움 지도"
                     english="MASTER MAP"
-                    right="다섯 개의 영역, 하나의 성장"
+                    right="두 개의 축, 나만의 성장"
                   />
-                  <section className="area-grid">
-                    {areas.map((a, i) => (
-                      <AreaCard key={a.id} area={a} index={i} />
+                  <section
+                    className="learning-grid"
+                    aria-label="최상위 학습 카테고리"
+                  >
+                    {learningCategories.map((category) => (
+                      <LearningCategory key={category.id} category={category} />
                     ))}
                   </section>
                   <section className="today">
@@ -345,6 +371,28 @@ function App() {
                 element={<Detail area={a} />}
               />
             ))}
+            <Route
+              path="/certifications"
+              element={
+                <>
+                  <Link className="back-link" to="/">
+                    <ArrowLeft size={16} />
+                    전체 보기로 돌아가기
+                  </Link>
+                  <div className="detail-heading purple">
+                    <p className="eyebrow">CERTIFICATIONS</p>
+                    <h1>자격증</h1>
+                    <p className="subtitle">
+                      관세사를 중심으로, 무역 전문성을 쌓아요.
+                    </p>
+                  </div>
+                  <LearningCategory
+                    category={learningCategories[1]}
+                    showHeading={false}
+                  />
+                </>
+              }
+            />
             <Route path="/activity" element={<Activity tasks={tasks} />} />
             <Route
               path="*"
@@ -415,81 +463,128 @@ function SectionTitle({
     </div>
   );
 }
-function AreaCard({ area: a, index }: { area: Area; index: number }) {
-  const Icon = icons[index];
+function LearningCategory({
+  category,
+  showHeading = true,
+}: {
+  category: (typeof learningCategories)[number];
+  showHeading?: boolean;
+}) {
+  const main = areas.find((area) => area.id === category.mainId)!;
+  const isLanguage = category.id === "languages";
+  return (
+    <section className={`learning-category ${main.color}`}>
+      {showHeading && (
+        <div className="category-heading">
+          <div>
+            <p className="eyebrow">{category.name}</p>
+            <h2>{category.title}</h2>
+          </div>
+          <Link
+            to={`/${category.id}`}
+            aria-label={`${category.title} 전체 보기`}
+          >
+            전체 보기 <ArrowUpRight size={16} />
+          </Link>
+        </div>
+      )}
+      <AreaCard area={main} />
+      <div className="secondary-heading">
+        <span>함께 이어가는 {isLanguage ? "언어" : "자격증"}</span>
+        <small>SUPPORTING</small>
+      </div>
+      <div className="supporting-list">
+        {isLanguage
+          ? languages
+              .filter((language) => language.id !== "hanzi")
+              .map((language) => (
+                <Link
+                  key={language.id}
+                  to={`/languages/${language.id}`}
+                  className={`supporting-card ${language.color}`}
+                >
+                  <span className="supporting-icon">
+                    <Globe2 size={18} />
+                  </span>
+                  <div>
+                    <h3>{language.title}</h3>
+                    <p>{language.goal}</p>
+                  </div>
+                  <span className="badge">{language.status}</span>
+                  <ChevronRight size={16} />
+                </Link>
+              ))
+          : certificationCheckpoints.map((checkpoint) => (
+              <Link
+                key={checkpoint.id}
+                to={`/customs#${checkpoint.id}`}
+                className="supporting-card purple"
+              >
+                <span className="supporting-icon">
+                  <GraduationCap size={18} />
+                </span>
+                <div>
+                  <h3>{checkpoint.title}</h3>
+                  <p>{checkpoint.note}</p>
+                </div>
+                <ChevronRight size={16} />
+              </Link>
+            ))}
+      </div>
+      {isLanguage && (
+        <Link className="category-footnote" to="/languages/hanzi">
+          공용한자 808 · 중국어와 일본어 연결 <ArrowRight size={14} />
+        </Link>
+      )}
+    </section>
+  );
+}
+function AreaCard({ area: a }: { area: Area }) {
+  const Icon = a.id === "english" ? BookOpen : GraduationCap;
   const metric =
     a.id === "english"
       ? a.metrics[1]
-      : a.id === "customs"
-        ? { done: 20, total: 360 }
-        : a.id === "system"
-          ? a.metrics[0]
-          : undefined;
+      : {
+          done: subjects.reduce((sum, subject) => sum + (subject.done ?? 0), 0),
+          total: subjects.reduce(
+            (sum, subject) => sum + (subject.total ?? 0),
+            0,
+          ),
+        };
   return (
-    <Link to={`/${a.id}`} className={`area-card ${a.color}`}>
+    <Link to={`/${a.id}`} className={`area-card main-learning-card ${a.color}`}>
       <div className="card-top">
         <span className="area-icon">
-          <Icon size={22} />
+          <Icon size={26} />
         </span>
+        <span className="main-label">MAIN</span>
         <span className="badge">{a.status}</span>
-        <ArrowUpRight size={17} className="card-arrow" />
+        <ArrowUpRight size={18} className="card-arrow" />
       </div>
       <p className="area-name">{a.name}</p>
       <h3>{a.title}</h3>
       <p className="area-goal">{a.goal}</p>
-      {a.id === "english" ? (
-        <div className="card-detail">
-          OPIc{" "}
-          <span>
-            IM2 <ArrowRight size={12} /> <strong>AL</strong>
-          </span>
-        </div>
-      ) : a.id === "languages" ? (
-        <div className="language-chips">
-          <span>
-            中 <small>LIGHT</small>
-          </span>
-          <span>
-            日 <small>LIGHT</small>
-          </span>
-          <span>
-            ES <small>PARKED</small>
-          </span>
-        </div>
-      ) : (
-        <div className="card-detail">
-          {a.id === "customs"
-            ? "해커스 관세사 1차"
-            : a.id === "career"
-              ? "포워딩 실무 · 7개 학습 분야"
-              : "영어 단어장 DB 정비"}
-          <span>
-            {a.id === "customs"
-              ? "6과목"
-              : a.id === "system"
-                ? "자료 정리"
-                : ""}
-          </span>
-        </div>
-      )}
-      {metric && metric.done !== undefined && metric.total !== undefined ? (
+      <div className="card-detail">
+        {a.id === "english" ? (
+          <>
+            OPIc{" "}
+            <span>
+              IM2 <ArrowRight size={14} /> <strong>AL</strong>
+            </span>
+          </>
+        ) : (
+          <>
+            해커스 관세사 1차 <span>{subjects.length}과목</span>
+          </>
+        )}
+      </div>
+      {metric.done !== undefined && metric.total !== undefined && (
         <Progress done={metric.done} total={metric.total} color={a.color} />
-      ) : (
-        <div className="unmeasured">
-          <span>
-            {a.id === "career" ? "진행량 미입력" : "각 언어의 속도에 맞춰"}
-          </span>
-          <ArrowRight size={15} />
-        </div>
       )}
       <div className="card-bottom">
         {a.id === "english"
-          ? "예문 학습 기준 · 가상 데이터"
-          : a.id === "customs"
-            ? "전체 20 / 360강 · 가상 데이터"
-            : a.id === "system"
-              ? "DB 정비 기준 · 가상 데이터"
-              : "자세히 살펴보기"}
+          ? "예문 학습 기준 · 기존 가상 데이터"
+          : `전체 ${metric.done} / ${metric.total}강 · 기존 가상 데이터`}
       </div>
     </Link>
   );
@@ -499,10 +594,21 @@ function Detail({ area: a }: { area: Area }) {
     <>
       <Link
         className="back-link"
-        to={languages.includes(a) ? "/languages" : "/"}
+        to={
+          languages.includes(a) || a.id === "english"
+            ? "/languages"
+            : a.id === "customs"
+              ? "/certifications"
+              : "/"
+        }
       >
         <ArrowLeft size={16} />
-        {languages.includes(a) ? "외국어" : "전체 보기"}로 돌아가기
+        {languages.includes(a) || a.id === "english"
+          ? "외국어"
+          : a.id === "customs"
+            ? "자격증"
+            : "전체 보기"}
+        로 돌아가기
       </Link>
       <div className={`detail-heading ${a.color}`}>
         <span className="eyebrow">{a.name}</span>
@@ -563,6 +669,7 @@ function Detail({ area: a }: { area: Area }) {
             <strong>자료 정리도 성장의 한 부분입니다.</strong>
             <br />
             <small>
+              SYSTEM 프로젝트 구조는 향후 Task 관리에서도 활용합니다.
               학습(STUDY) 시간과 자료 정리(SYSTEM) 시간은 구분합니다. 오늘 샘플
               계획: 학습 110분 · 정리 20분.
             </small>
@@ -570,38 +677,10 @@ function Detail({ area: a }: { area: Area }) {
         </div>
       )}
       {a.id === "languages" ? (
-        <div className="language-grid">
-          {languages.map((l, i) => (
-            <Link
-              to={`/languages/${l.id}`}
-              className={`language-card ${l.color}`}
-              key={l.id}
-            >
-              <div className="flex justify-between">
-                <span className="language-symbol">
-                  {["中", "あ", "Ñ", "字"][i]}
-                </span>
-                <span className="badge">{l.status}</span>
-              </div>
-              <p className="eyebrow">{l.name}</p>
-              <h2>{l.title}</h2>
-              <p>{l.goal}</p>
-              <small>
-                {
-                  [
-                    "HSK 1~5급 DB 2,500단어 · HSK6 준비",
-                    "가나 · 기초 어휘 · JLPT N5부터",
-                    "DELE A2 취득 · B1 → B2 장기 목표",
-                    "중국어·일본어 연계 · 808자 기준",
-                  ][i]
-                }
-              </small>
-              <div className="language-bottom">
-                자세히 보기 <ArrowUpRight size={18} />
-              </div>
-            </Link>
-          ))}
-        </div>
+        <LearningCategory
+          category={learningCategories[0]}
+          showHeading={false}
+        />
       ) : (
         <section className="detail-grid">
           {a.metrics.map((m, i) => (
@@ -613,17 +692,13 @@ function Detail({ area: a }: { area: Area }) {
         <>
           <SectionTitle title="여정 속 체크포인트" english="MILESTONES" />
           <div className="milestones">
-            {[
-              ["01", "무역영어 1급", "2026년 11월 목표"],
-              ["02", "원산지관리사", "시험 일정에 맞춰 준비"],
-              ["03", "보세사", "시험 일정에 맞춰 준비"],
-            ].map(([n, title, note]) => (
-              <article key={n}>
-                <span>{n}</span>
+            {certificationCheckpoints.map((checkpoint, index) => (
+              <article key={checkpoint.id} id={checkpoint.id} tabIndex={-1}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
                 <div>
-                  <h3>{title}</h3>
-                  <p>{note}</p>
-                  <small>관세사 공부와 연결된 하위 목표</small>
+                  <h3>{checkpoint.title}</h3>
+                  <p>{checkpoint.note}</p>
+                  <small>관세사 공부와 연결된 하위 목표 · 진행량 미입력</small>
                 </div>
               </article>
             ))}

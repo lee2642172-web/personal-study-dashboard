@@ -254,3 +254,31 @@ export const week = [
   { day: "토", study: 40, review: 0, system: 0 },
   { day: "일", study: 0, review: 0, system: 0 },
 ];
+
+// Main navigation and home hierarchy are independent of retained detail data.
+export const learningCategories = [
+  {
+    id: "languages",
+    title: "외국어",
+    name: "LANGUAGES",
+    mainId: "english",
+    description: "영어를 중심으로, 언어의 가능성을 넓혀요.",
+  },
+  {
+    id: "certifications",
+    title: "자격증",
+    name: "CERTIFICATIONS",
+    mainId: "customs",
+    description: "관세사를 중심으로, 무역 전문성을 쌓아요.",
+  },
+] as const;
+
+export const certificationCheckpoints = [
+  { id: "trade-english", title: "무역영어 1급", note: "2026년 11월 목표" },
+  {
+    id: "origin-manager",
+    title: "원산지관리사",
+    note: "시험 일정에 맞춰 준비",
+  },
+  { id: "bonded-specialist", title: "보세사", note: "시험 일정에 맞춰 준비" },
+];
