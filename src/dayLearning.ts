@@ -202,32 +202,12 @@ export function saveDayAwareLog(
       record.round === next.round &&
       active(next) &&
       (!previous || !active(previous) || !sameTuple);
-    const cancelled =
-      previous?.materialId === record.materialId &&
-      previous?.round === record.round &&
-      active(previous) &&
-      (!active(next) || !sameTuple);
-    let changed: DayRoundState = { ...state, nextDay };
-    if (added && Number(next.item) >= 1 && Number(next.item) <= totalDays(m))
-      changed = {
-        ...changed,
-        lastOpenedDay:
-          Number(next.item) === state.nextDay
-            ? (nextDay ?? totalDays(m))
-            : Math.min(totalDays(m), Number(next.item) + 1),
-        lastReviewId: next.id,
-      };
-    if (
-      cancelled &&
-      previous &&
-      Number(previous.item) >= 1 &&
-      Number(previous.item) <= totalDays(m)
-    )
-      changed = {
-        ...changed,
-        lastOpenedDay: Number(previous.item),
-        lastReviewId: previous.id,
-      };
+    // Recording and cancelling affect progress, never the selected browsing Day.
+    const changed: DayRoundState = {
+      ...state,
+      nextDay,
+      ...(added ? { lastReviewId: next.id } : {}),
+    };
     const current = getDayBook(result, m);
     result = putBook(result, {
       ...current,
