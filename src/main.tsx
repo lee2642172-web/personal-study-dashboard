@@ -189,7 +189,7 @@ function App() {
           </Routes>
           <footer>
             <span>
-              제공받은 이력 + 직접 입력한 기록 · 미입력 시간은 추정하지 않습니다
+              기존 이력 보존 · EBS 빠른 완료는 기본 18분 · 실제 학습일 기준 집계
             </span>
             <a href="/prototype">이전 시제품 보기 (샘플 데이터)</a>
           </footer>

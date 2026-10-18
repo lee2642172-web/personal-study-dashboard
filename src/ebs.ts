@@ -132,3 +132,48 @@ export function calendarDates(month: string): (string | null)[] {
       : `${month}-${String(i - offset + 1).padStart(2, "0")}`,
   );
 }
+
+export const EBS_DEFAULT_MINUTES = 18;
+/** Idempotent first completion; intentional extra learning appends a distinct record. */
+export function recordEbsLearning(
+  data: DashboardData,
+  courseId: string,
+  contentDate: string,
+  learnedDate: string,
+  id: string,
+  replay = false,
+): DashboardData {
+  if (!id || data.logs.some((log) => log.id === id)) return data;
+  const course = ebsCourses(data.materials).find((m) => m.id === courseId);
+  if (
+    !course ||
+    !validDate(contentDate) ||
+    !validDate(learnedDate) ||
+    contentDate > learnedDate
+  )
+    return data;
+  const day = courseDay(course, data.logs, contentDate, learnedDate);
+  if (!day.scheduled && !day.entries.length) return data;
+  if (!replay && day.completed) return data;
+  if (replay && !day.completed) return data;
+  const round =
+    day.entries.reduce((highest, l) => Math.max(highest, l.round), 0) + 1;
+  const log: StudyLog = {
+    id,
+    area: course.area,
+    materialId: course.id,
+    item: contentDate,
+    contentDate,
+    round,
+    date: learnedDate,
+    minutes: EBS_DEFAULT_MINUTES,
+    activity: replay ? "review" : "study",
+    note: "",
+    topic: "",
+    writing: "",
+    speaking: "",
+    origin: "entered",
+    completed: true,
+  };
+  return { ...data, logs: [...data.logs, log] };
+}

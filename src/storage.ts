@@ -55,6 +55,8 @@ export function validData(v: unknown): v is DashboardData {
       (l) =>
         object(l) &&
         typeof l.completed === "boolean" &&
+        (l.contentDate === undefined ||
+          (typeof l.contentDate === "string" && l.contentDate === l.item)) &&
         strings(l, [
           "id",
           "materialId",

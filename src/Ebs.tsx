@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { localDate } from "./dates";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -12,9 +13,9 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { useData } from "./state";
-import { PageHeading, Section, Progress, Empty, Dialog } from "./ui";
-import { LogForm, MaterialForm, createLog } from "./forms";
-import { today, type StudyLog, type Material } from "./model";
+import { PageHeading, Progress, Empty } from "./ui";
+import { LogForm, MaterialForm } from "./forms";
+import { newId, type StudyLog, type Material } from "./model";
 import {
   ebsCourses,
   courseEntries,
@@ -26,6 +27,8 @@ import {
   scheduled,
   validDate,
   EBS_START,
+  recordEbsLearning,
+  EBS_DEFAULT_MINUTES,
 } from "./ebs";
 const monthLabel = (month: string) =>
   `${Number(month.slice(0, 4))}년 ${Number(month.slice(5))}월`;
@@ -55,8 +58,8 @@ export function EbsCard() {
   const { data } = useData();
   const courses = ebsCourses(data.materials);
   if (!courses.length) return null;
-  const month = defaultEbsDate(courses, data.logs, today()).slice(0, 7);
-  const stats = monthStats(courses, data.logs, month, today());
+  const month = defaultEbsDate(courses, data.logs, localDate()).slice(0, 7);
+  const stats = monthStats(courses, data.logs, month, localDate());
   return (
     <Link to="/english/ebs" className="ebs-group-card blue">
       <div className="ebs-group-header">
@@ -95,16 +98,16 @@ export function EbsCard() {
   );
 }
 export function EbsPage() {
-  const { data } = useData();
+  const { data, update } = useData();
   const courses = ebsCourses(data.materials);
-  const asOf = today();
+  const asOf = localDate();
   const [date, setDate] = useState(() =>
     defaultEbsDate(courses, data.logs, asOf),
   );
   const [month, setMonth] = useState(date.slice(0, 7));
   const [log, setLog] = useState<StudyLog | null>(null);
   const [editing, setEditing] = useState<Material | null>(null);
-  const [batch, setBatch] = useState(false);
+  const [notice, setNotice] = useState("");
   const [unplacedLog, setUnplacedLog] = useState<StudyLog | null>(null);
   const unplaced = courses.flatMap((course) =>
     courseEntries(course, data.logs)
@@ -123,12 +126,36 @@ export function EbsPage() {
     setDate(`${next}-01`);
   }
   function add(course: Material, replay = false) {
-    const entries = courseDay(course, data.logs, date, asOf).entries;
-    const round = entries.reduce((s, l) => Math.max(s, l.round), 0) + 1;
-    setLog({
-      ...createLog(course.area, course.id, date, round),
-      activity: replay ? "review" : "study",
-    });
+    const learnedDate = localDate();
+    const id = newId();
+    update((d) =>
+      recordEbsLearning(d, course.id, date, learnedDate, id, replay),
+    );
+    setNotice(
+      `${course.title} · ${replay ? "추가 학습" : "완료"} · ${learnedDate} · ${EBS_DEFAULT_MINUTES}분 기록`,
+    );
+  }
+  function completeAll() {
+    const learnedDate = localDate();
+    const ids = new Map(courses.map((course) => [course.id, newId()]));
+    update((d) =>
+      ebsCourses(d.materials)
+        .filter((course) => scheduled(course, date))
+        .reduce(
+          (next, course) =>
+            recordEbsLearning(
+              next,
+              course.id,
+              date,
+              learnedDate,
+              ids.get(course.id) ?? newId(),
+            ),
+          d,
+        ),
+    );
+    setNotice(
+      `${date} 발행 강좌 완료 · 실제 학습일 ${learnedDate} · 강좌당 기본 ${EBS_DEFAULT_MINUTES}분`,
+    );
   }
   return (
     <>
@@ -191,6 +218,10 @@ export function EbsPage() {
           </article>
         ))}
       </div>
+      <p className="ebs-save-notice" role="status" aria-live="polite">
+        {notice ||
+          `회차를 고르고 완료를 누르면 기기의 오늘 날짜와 기본 ${EBS_DEFAULT_MINUTES}분으로 기록합니다. 날짜·시간은 기록 수정에서 변경할 수 있습니다.`}
+      </p>
       <div className="ebs-calendar-layout">
         <section
           className="ebs-calendar-panel"
@@ -309,7 +340,7 @@ export function EbsPage() {
           <button
             className="primary-button ebs-batch-button"
             disabled={!pending.length}
-            onClick={() => setBatch(true)}
+            onClick={completeAll}
           >
             <Check size={17} />
             {pending.length
@@ -362,31 +393,42 @@ export function EbsPage() {
                         기본 발행 요일 외의 기존 기록을 보존해 표시합니다.
                       </p>
                     )}
-                    <div className="ebs-daily-actions">
+                    <div className="ebs-daily-actions ebs-quick-actions">
                       <button
-                        className="secondary-button"
-                        disabled={day.future}
-                        onClick={() => {
-                          const existing =
-                            day.entries.find((l) => l.completed) ??
-                            day.entries.at(-1);
-                          if (existing) setLog(existing);
-                          else add(course);
-                        }}
+                        className="primary-button ebs-complete-button"
+                        disabled={day.future || day.completed}
+                        onClick={() => add(course)}
                       >
-                        {day.entries.length
-                          ? "기록 확인 / 수정"
-                          : "개별 완료 기록"}
+                        <Check size={17} />
+                        {day.completed ? "완료됨" : "완료"}
                       </button>
+                      <small className="ebs-quick-hint">
+                        버튼을 누른 날 · 기본 {EBS_DEFAULT_MINUTES}분
+                      </small>
                       {day.entries.length > 0 && (
-                        <button
-                          className="text-button"
-                          disabled={day.future}
-                          onClick={() => add(course, true)}
-                        >
-                          <Plus size={13} />
-                          재청취
-                        </button>
+                        <div className="ebs-secondary-actions">
+                          <button
+                            className="text-button"
+                            title="최근 기록의 날짜와 시간 수정"
+                            onClick={() => setLog(day.entries.at(-1)!)}
+                          >
+                            <Pencil size={13} />
+                            기록 수정
+                          </button>
+                          {day.completed && (
+                            <button
+                              className="text-button"
+                              disabled={day.future}
+                              onClick={() => add(course, true)}
+                            >
+                              <Plus size={13} />
+                              추가 학습{" "}
+                              <span aria-hidden="true">
+                                +{EBS_DEFAULT_MINUTES}분
+                              </span>
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                     {day.entries.length > 0 && (
@@ -466,121 +508,6 @@ export function EbsPage() {
       {editing && (
         <MaterialForm value={editing} onClose={() => setEditing(null)} />
       )}
-      {batch && <BatchComplete date={date} onClose={() => setBatch(false)} />}
     </>
-  );
-}
-function BatchComplete({
-  date,
-  onClose,
-}: {
-  date: string;
-  onClose: () => void;
-}) {
-  const { data, update } = useData();
-  const [learnedDate, setLearnedDate] = useState(today());
-  const [minutes, setMinutes] = useState<Record<string, string>>({});
-  const [note, setNote] = useState("");
-  const [error, setError] = useState("");
-  const pending = ebsCourses(data.materials).filter(
-    (m) =>
-      scheduled(m, date) &&
-      !courseDay(m, data.logs, date, today()).completed &&
-      date <= today(),
-  );
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    if (
-      !validDate(learnedDate) ||
-      learnedDate > today() ||
-      learnedDate < date
-    ) {
-      setError("실제 청취일은 콘텐츠 발행일부터 오늘 사이로 입력해 주세요.");
-      return;
-    }
-    update((d) => ({
-      ...d,
-      logs: [
-        ...d.logs,
-        ...ebsCourses(d.materials)
-          .filter(
-            (m) =>
-              scheduled(m, date) &&
-              date <= today() &&
-              !courseDay(m, d.logs, date, today()).completed,
-          )
-          .map((m) => ({
-            ...createLog(m.area, m.id, date),
-            date: learnedDate,
-            minutes: minutes[m.id] ? Number(minutes[m.id]) : null,
-            note,
-          })),
-      ],
-    }));
-    onClose();
-  }
-  return (
-    <Dialog title="발행 강좌 일괄 완료" onClose={onClose}>
-      <form className="v1-form" onSubmit={submit}>
-        <div className="ebs-batch-info">
-          콘텐츠 발행일 <strong>{date}</strong>
-          <p>
-            이미 완료한 강좌는 수정하지 않습니다. 미래 회차와 발행이 없는 강좌는
-            제외합니다.
-          </p>
-        </div>
-        <label>
-          실제 청취일
-          <input
-            type="date"
-            required
-            min={date}
-            max={today()}
-            value={learnedDate}
-            onChange={(e) => setLearnedDate(e.target.value)}
-          />
-        </label>
-        <fieldset>
-          <legend>강좌별 실제 청취시간 (미측정 시 비워두기)</legend>
-          <div className="ebs-batch-times">
-            {pending.map((m) => (
-              <label key={m.id}>
-                {m.title}
-                <input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  placeholder="미측정"
-                  value={minutes[m.id] ?? ""}
-                  onChange={(e) =>
-                    setMinutes({ ...minutes, [m.id]: e.target.value })
-                  }
-                />
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <label>
-          공통 메모
-          <textarea
-            rows={3}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </label>
-        <p className="form-help">
-          강좌별 예상 길이는 실제 시간으로 자동 합산하지 않습니다. 선택한 강좌별
-          기록을 별도로 저장합니다.
-        </p>
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
-        <button className="primary-button" disabled={!pending.length}>
-          {pending.length}개 강좌 완료 저장
-        </button>
-      </form>
-    </Dialog>
   );
 }

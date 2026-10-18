@@ -1,3 +1,4 @@
+import { localDate } from "./dates";
 import { isEbsCourse, scheduled, validDate } from "./ebs";
 import { useState, type FormEvent } from "react";
 import { useData } from "./state";
@@ -5,7 +6,6 @@ import { Dialog, FieldSelect, ActivityLabels } from "./ui";
 import {
   materialStatuses,
   newId,
-  today,
   companyExams,
   type Material,
   type StudyLog,
@@ -203,7 +203,7 @@ export function createLog(
     materialId,
     item,
     round,
-    date: today(),
+    date: localDate(),
     minutes: null,
     activity: "study",
     note: "",
@@ -261,20 +261,25 @@ export function LogForm({
         );
         return;
       }
-      if (log.completed && log.item > today()) {
+      if (log.completed && log.item > localDate()) {
         setError("아직 발행되지 않은 미래 회차는 완료 처리할 수 없습니다.");
         return;
       }
-      if (log.date && (log.date < log.item || log.date > today())) {
+      if (log.date && (log.date < log.item || log.date > localDate())) {
         setError("실제 청취일은 콘텐츠 발행일부터 오늘 사이로 입력해 주세요.");
         return;
       }
     }
+    const nextLog = {
+      ...log,
+      contentDate:
+        m && isEbsCourse(m) && validDate(log.item) ? log.item : undefined,
+    };
     update((d) => ({
       ...d,
       logs: d.logs.some((x) => x.id === log.id)
-        ? d.logs.map((x) => (x.id === log.id ? log : x))
-        : [...d.logs, log],
+        ? d.logs.map((x) => (x.id === log.id ? nextLog : x))
+        : [...d.logs, nextLog],
     }));
     onClose();
   }
@@ -385,7 +390,7 @@ export function LogForm({
                   ? log.item
                   : undefined
               }
-              max={m && isEbsCourse(m) ? today() : undefined}
+              max={m && isEbsCourse(m) ? localDate() : undefined}
               value={log.date ?? ""}
               onChange={(e) => patch({ date: e.target.value || null })}
             />

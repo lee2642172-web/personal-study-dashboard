@@ -51,6 +51,8 @@ export type StudyLog = {
   id: string;
   area: FieldId;
   materialId: string;
+  /** EBS publication date; legacy records retain the same value in item. */
+  contentDate?: string;
   item: string;
   round: number;
   date: string | null;

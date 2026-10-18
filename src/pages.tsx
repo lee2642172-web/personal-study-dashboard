@@ -1,3 +1,5 @@
+import { localDate, type TimePeriod } from "./dates";
+import { learningTime } from "./studyTime";
 import { useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import {
@@ -241,12 +243,14 @@ function FieldCards({
 }
 export function Home() {
   const { data } = useData();
-  const study = data.logs.filter((l) => l.activity !== "system");
-  const measured = study.filter((l) => l.minutes !== null);
-  const time = measured.reduce((s, l) => s + (l.minutes ?? 0), 0);
-  const system = data.logs.filter(
-    (l) => l.activity === "system" && l.minutes !== null,
-  );
+  const [period, setPeriod] = useState<TimePeriod>("all");
+  const [selectedDate, setSelectedDate] = useState(localDate);
+  const {
+    study,
+    measured,
+    system,
+    studyMinutes: time,
+  } = learningTime(data.logs, period, selectedDate);
   const active = data.materials.filter((m) => m.status === "학습 중");
   return (
     <>
@@ -265,14 +269,49 @@ export function Home() {
           </p>
         </div>
       </div>
+      <div className="home-time-filter">
+        <label>
+          시간 통계 기간
+          <select
+            aria-label="시간 통계 기간"
+            value={period}
+            onChange={(e) => setPeriod(e.target.value as TimePeriod)}
+          >
+            <option value="all">전체</option>
+            <option value="today">오늘</option>
+            <option value="week">이번 주</option>
+            <option value="month">이번 달</option>
+            <option value="date">날짜 선택</option>
+          </select>
+        </label>
+        {period === "date" && (
+          <label>
+            실제 학습일
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+          </label>
+        )}
+        <p>
+          콘텐츠 발행일과 별도로, 실제 학습일 기준으로 집계합니다.
+          <br />
+          날짜·시간 미입력 이력은 보관하며 시간 합계에서 제외합니다.
+        </p>
+      </div>
       <section className="stats">
         <Stat
-          label="전체 학습 · 복습시간"
+          label={
+            period === "all"
+              ? "전체 학습 · 복습시간"
+              : "선택 기간 학습 · 복습시간"
+          }
           value={measured.length ? `${time}분` : "미기록"}
-          note={`실제 시간 입력 ${measured.length}건 · 추정 시간 제외`}
+          note={`날짜·시간 기록 ${measured.length}건 · EBS 기본 18분 포함`}
         />
         <Stat
-          label="학습 이력"
+          label={period === "all" ? "전체 학습 이력" : "선택 기간 학습 이력"}
           value={`${study.length}건`}
           note={`날짜 미입력 ${study.filter((l) => !l.date).length}건 포함 · 사용자 제공 이력`}
         />
@@ -283,7 +322,7 @@ export function Home() {
               ? `${system.reduce((s, l) => s + (l.minutes ?? 0), 0)}분`
               : "미기록"
           }
-          note="학습시간과 별도 집계"
+          note="실제 활동일 기준 · 학습시간과 별도 집계"
         />
         <Stat
           label="진행 중 자료"
@@ -859,8 +898,14 @@ export function LogList({
               </h3>
               <p>
                 {l.completed ? "완료" : "진행 중"} · {fieldName(l.area)} ·{" "}
-                {l.item ? `${l.item} · ${l.round}회독 · ` : ""}
-                {l.date || "실제 날짜 미입력"} ·{" "}
+                {l.item
+                  ? data.materials.some(
+                      (m) => m.id === l.materialId && isEbsCourse(m),
+                    )
+                    ? `콘텐츠 발행일 ${l.contentDate ?? l.item} · `
+                    : `${l.item} · ${l.round}회독 · `
+                  : ""}
+                실제 학습일 {l.date || "미입력"} ·{" "}
                 {l.minutes === null ? "시간 미입력" : `${l.minutes}분`}
               </p>
               {l.origin === "reported" && (
@@ -912,7 +957,7 @@ export function Records() {
       <PageHeading
         eyebrow="LEARNING LOG"
         title="학습 기록"
-        description="학습·복습·자료 정비를 분리합니다. 미측정 시간은 추정하지 않습니다."
+        description="학습·복습·자료 정비를 분리합니다. EBS 빠른 완료는 기본 18분으로 기록되며 수정할 수 있습니다."
         action={
           <button
             className="primary-button"
