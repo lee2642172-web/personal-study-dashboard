@@ -446,7 +446,9 @@ export function LogForm({
               })
             }
           />{" "}
-          학습 완료 (해제해도 기록과 시간은 유지)
+          {m && isDayBook(m) && log.activity !== "system"
+            ? "학습 완료 (해제 후 저장하면 복습 기록 삭제)"
+            : "학습 완료 (해제해도 기록과 시간은 유지)"}
         </label>
         <label>
           활동 메모

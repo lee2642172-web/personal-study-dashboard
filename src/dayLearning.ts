@@ -238,6 +238,26 @@ export function saveDayAwareLog(
       ].sort((a, b) => a.round - b.round),
     });
   }
+  const material = data.materials.find((m) => m.id === next.materialId);
+  if (
+    next.voided &&
+    next.activity !== "system" &&
+    material &&
+    isDayBook(material)
+  ) {
+    result = {
+      ...result,
+      logs: result.logs.filter((l) => l.id !== next.id),
+      dayBooks: result.dayBooks?.map((book) => ({
+        ...book,
+        rounds: book.rounds.map((round) => {
+          if (round.lastReviewId !== next.id) return round;
+          const { lastReviewId: _removed, ...remaining } = round;
+          return remaining;
+        }),
+      })),
+    };
+  }
   return result;
 }
 export function recordDayReview(
@@ -285,14 +305,21 @@ export function cancelDayReview(
   logId: string,
 ): DashboardData {
   const log = data.logs.find((l) => l.id === logId);
-  if (!log || !active(log)) return data;
+  const material = data.materials.find((m) => m.id === log?.materialId);
+  if (
+    !log ||
+    !material ||
+    !isDayBook(material) ||
+    log.activity === "system" ||
+    (!active(log) && !log.voided)
+  )
+    return data;
   return saveDayAwareLog(data, { ...log, completed: false, voided: true });
 }
-export function restoreDayReview(
-  data: DashboardData,
-  logId: string,
-): DashboardData {
-  const log = data.logs.find((l) => l.id === logId);
-  if (!log?.voided) return data;
-  return saveDayAwareLog(data, { ...log, completed: true, voided: false });
+/** Remove legacy cancelled word-book reviews without touching EBS or active history. */
+export function removeCancelledDayReviews(data: DashboardData): DashboardData {
+  return data.logs.filter((log) => log.voided).reduce(
+    (current, log) => cancelDayReview(current, log.id),
+    data,
+  );
 }

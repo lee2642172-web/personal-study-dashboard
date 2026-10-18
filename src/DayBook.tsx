@@ -29,7 +29,6 @@ import {
   openDay,
   recordDayReview,
   cancelDayReview,
-  restoreDayReview,
   dayCompleted,
 } from "./dayLearning";
 export function DayBook({ material: m }: { material: Material }) {
@@ -112,12 +111,8 @@ export function DayBook({ material: m }: { material: Material }) {
   function cancel(entry: StudyLog) {
     update((d) => cancelDayReview(d, entry.id));
     setNotice(
-      `Day ${entry.item} 기록을 취소하고 해당 Day 화면으로 돌아왔습니다. 회독 진도는 남아 있는 기록을 기준으로 복원했습니다.`,
+      `Day ${entry.item} 복습 기록을 삭제하고 해당 Day 화면으로 돌아왔습니다. 회독 진도는 남아 있는 기록을 기준으로 복원했습니다.`,
     );
-  }
-  function restore(entry: StudyLog) {
-    update((d) => restoreDayReview(d, entry.id));
-    setNotice(`Day ${entry.item} 복습 기록을 기존 날짜·시간으로 복원했습니다.`);
   }
   return (
     <>
@@ -248,21 +243,13 @@ export function DayBook({ material: m }: { material: Material }) {
           <div>
             <RotateCcw size={17} />
             <p>
-              {last.voided
-                ? `Day ${last.item} 복습 기록이 취소되었습니다.`
-                : `최근 기록: ${book.activeRound}회독 Day ${last.item} · ${last.date ?? "날짜 미입력"}`}
+              {`최근 기록: ${book.activeRound}회독 Day ${last.item} · ${last.date ?? "날짜 미입력"}`}
             </p>
           </div>
-          {last.voided ? (
-            <button className="text-button" onClick={() => restore(last)}>
-              취소한 기록 복원
+          {last.completed && (
+            <button className="text-button" onClick={() => cancel(last)}>
+              기록 취소 · Day {last.item}로 돌아가기
             </button>
-          ) : (
-            last.completed && (
-              <button className="text-button" onClick={() => cancel(last)}>
-                기록 취소 · Day {last.item}로 돌아가기
-              </button>
-            )
           )}
         </div>
       )}
@@ -357,11 +344,7 @@ export function DayBook({ material: m }: { material: Material }) {
                     {entry.round}회독 · {entry.date ?? "날짜 미입력"}
                   </strong>
                   <p>
-                    {entry.voided
-                      ? "취소 · 시간 집계 제외"
-                      : entry.completed
-                        ? "복습 완료"
-                        : "진행 중"}{" "}
+                    {entry.completed ? "복습 완료" : "진행 중"}{" "}
                     ·{" "}
                     {entry.minutes === null
                       ? "시간 미입력"
@@ -372,22 +355,13 @@ export function DayBook({ material: m }: { material: Material }) {
                   <button className="text-button" onClick={() => setLog(entry)}>
                     기록 수정
                   </button>
-                  {entry.voided ? (
+                  {entry.completed && (
                     <button
                       className="text-button"
-                      onClick={() => restore(entry)}
+                      onClick={() => cancel(entry)}
                     >
-                      기록 복원
+                      기록 취소
                     </button>
-                  ) : (
-                    entry.completed && (
-                      <button
-                        className="text-button"
-                        onClick={() => cancel(entry)}
-                      >
-                        기록 취소
-                      </button>
-                    )
                   )}
                 </div>
               </article>
