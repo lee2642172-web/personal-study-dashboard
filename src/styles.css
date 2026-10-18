@@ -3303,3 +3303,180 @@ footer > span:first-child {
     padding: 9px;
   }
 }
+
+/* HOME: today's actual learning before the overall dashboard. */
+.today-learning {
+  background: white;
+  border: 1px solid #dce6f7;
+  border-radius: 16px;
+  padding: 26px 28px 18px;
+  margin-bottom: 28px;
+}
+.today-learning-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 22px;
+}
+.today-learning-heading h1 {
+  font-size: 28px;
+  color: #405573;
+  letter-spacing: -0.7px;
+  margin-top: 9px;
+}
+.today-learning-count {
+  font-size: 12px;
+  color: #91a1b8;
+  margin-top: 9px;
+}
+.today-learning-total {
+  text-align: right;
+  flex-shrink: 0;
+}
+.today-learning-total > span {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  font-size: 11px;
+  color: #8b9fbe;
+}
+.today-learning-total strong {
+  display: block;
+  color: #4f72b3;
+  font-size: 34px;
+  font-weight: 700;
+  margin-top: 9px;
+}
+.today-learning-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 360px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #d5dff0 transparent;
+}
+.today-learning-list:focus-visible {
+  outline: 2px solid #9bb2d9;
+  outline-offset: 3px;
+}
+.today-learning-entry {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 4px;
+  border-top: 1px solid #edf1f7;
+  min-height: 76px;
+}
+.today-learning-entry:hover {
+  background: #f8fafd;
+}
+.today-learning-entry-copy {
+  flex: 1;
+  min-width: 0;
+}
+.today-learning-entry h2 {
+  font-size: 14px;
+  color: #607b9e;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.today-learning-entry p {
+  font-size: 11px;
+  color: #93a3bb;
+  line-height: 1.8;
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+}
+.today-learning-type {
+  color: #7795c5;
+  background: #f0f4fc;
+  border-radius: 4px;
+  padding: 3px 6px;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+.today-learning-time {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #5e7ead;
+}
+.today-learning-time.is-unknown {
+  font-size: 11px;
+  color: #a1adc0;
+  font-weight: 400;
+}
+.today-learning-entry > svg {
+  flex-shrink: 0;
+  color: #a6b6cc;
+}
+.today-learning-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  border-top: 1px solid #eaf0f7;
+  padding-top: 15px;
+  margin-top: 5px;
+}
+.today-learning-footer p {
+  font-size: 10px;
+  color: #9baac0;
+  line-height: 1.9;
+}
+.today-learning-footer .text-link {
+  flex-shrink: 0;
+  font-size: 11px;
+  min-height: 32px;
+}
+.today-learning-empty {
+  padding: 24px 10px;
+  border-top: 1px solid #edf1f7;
+  text-align: center;
+  color: #8b9fba;
+}
+.today-learning-empty p {
+  font-size: 14px;
+}
+.today-learning-empty > span {
+  display: block;
+  font-size: 11px;
+  margin-top: 10px;
+  line-height: 1.9;
+}
+.today-learning-empty .text-link {
+  justify-content: center;
+  font-size: 12px;
+  min-height: 44px;
+  margin-top: 12px;
+}
+@media (max-width: 650px) {
+  .today-learning {
+    padding: 21px 16px 15px;
+  }
+  .today-learning-heading {
+    gap: 12px;
+  }
+  .today-learning-heading h1 {
+    font-size: 23px;
+  }
+  .today-learning-total strong {
+    font-size: 27px;
+  }
+  .today-learning-entry {
+    gap: 9px;
+  }
+  .today-learning-entry h2 {
+    font-size: 12px;
+  }
+  .today-learning-entry > svg {
+    display: none;
+  }
+  .today-learning-footer {
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+}

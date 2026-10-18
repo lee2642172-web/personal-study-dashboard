@@ -1,3 +1,4 @@
+import { TodayLearning } from "./TodayLearning";
 import { DayBook } from "./DayBook";
 import { isDayBook, getDayBook, dayRoundTotal } from "./dayLearning";
 import { localDate, type TimePeriod } from "./dates";
@@ -270,11 +271,7 @@ export function Home() {
   const active = data.materials.filter((m) => m.status === "학습 중");
   return (
     <>
-      <PageHeading
-        eyebrow="YOUR LEARNING, AT A GLANCE"
-        title="배움의 전체를, 한눈에."
-        description="외국어부터 자격증까지. 기록된 사실을 바탕으로 나의 성장을 살펴보세요."
-      />
+      <TodayLearning />
       <div className="v1-notice">
         <Target size={20} />
         <div>
