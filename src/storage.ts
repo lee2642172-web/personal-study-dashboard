@@ -32,6 +32,44 @@ export function validData(v: unknown): v is DashboardData {
     )
   )
     return false;
+  if (
+    v.dayBooks !== undefined &&
+    (!Array.isArray(v.dayBooks) ||
+      !v.dayBooks.every(
+        (b) =>
+          object(b) &&
+          typeof b.materialId === "string" &&
+          positiveOrNull(b.totalDays) &&
+          b.totalDays !== null &&
+          Number.isSafeInteger(b.activeRound) &&
+          Number(b.activeRound) > 0 &&
+          Array.isArray(b.rounds) &&
+          b.rounds.length > 0 &&
+          b.rounds.every(
+            (r) =>
+              object(r) &&
+              Number.isSafeInteger(r.round) &&
+              Number(r.round) > 0 &&
+              (r.nextDay === null ||
+                (Number.isInteger(r.nextDay) &&
+                  Number(r.nextDay) >= 1 &&
+                  Number(r.nextDay) <= Number(b.totalDays))) &&
+              Number.isInteger(r.lastOpenedDay) &&
+              Number(r.lastOpenedDay) >= 1 &&
+              Number(r.lastOpenedDay) <= Number(b.totalDays) &&
+              (r.lastReviewId === undefined ||
+                typeof r.lastReviewId === "string"),
+          ) &&
+          new Set(b.rounds.map((r) => (r as Record<string, unknown>).round))
+            .size === b.rounds.length &&
+          b.rounds.some(
+            (r) => (r as Record<string, unknown>).round === b.activeRound,
+          ),
+      ) ||
+      new Set(v.dayBooks.map((b) => (b as Record<string, unknown>).materialId))
+        .size !== v.dayBooks.length)
+  )
+    return false;
   return (
     (v.materials as unknown[]).every(
       (m) =>

@@ -90,8 +90,21 @@ export type Task = {
   items: { id: string; title: string; done: boolean }[];
   note: string;
 };
+export type DayRoundState = {
+  round: number;
+  nextDay: number | null;
+  lastOpenedDay: number;
+  lastReviewId?: string;
+};
+export type DayBookState = {
+  materialId: string;
+  totalDays: number;
+  activeRound: number;
+  rounds: DayRoundState[];
+};
 export type DashboardData = {
   version: 1;
+  dayBooks?: DayBookState[];
   materials: Material[];
   logs: StudyLog[];
   goals: Goal[];
@@ -131,10 +144,11 @@ export function progress(material: Material, logs: StudyLog[], round = 1) {
           l.completed &&
           !l.voided &&
           l.round === round &&
+          (material.kind !== "days" || Number.isInteger(Number(l.item))) &&
           Number(l.item) >= 1 &&
           Number(l.item) <= (material.total ?? 0),
       )
-      .map((l) => l.item),
+      .map((l) => (material.kind === "days" ? String(Number(l.item)) : l.item)),
   ).size;
   return {
     count,

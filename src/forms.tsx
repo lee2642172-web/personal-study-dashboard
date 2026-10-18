@@ -1,3 +1,4 @@
+import { isDayBook, saveDayAwareLog } from "./dayLearning";
 import { localDate } from "./dates";
 import { isEbsCourse, scheduled, validDate } from "./ebs";
 import { useState, type FormEvent } from "react";
@@ -275,12 +276,7 @@ export function LogForm({
       contentDate:
         m && isEbsCourse(m) && validDate(log.item) ? log.item : undefined,
     };
-    update((d) => ({
-      ...d,
-      logs: d.logs.some((x) => x.id === log.id)
-        ? d.logs.map((x) => (x.id === log.id ? nextLog : x))
-        : [...d.logs, nextLog],
-    }));
+    update((d) => saveDayAwareLog(d, nextLog));
     onClose();
   }
   return (
@@ -443,7 +439,10 @@ export function LogForm({
             onChange={(e) =>
               patch({
                 completed: e.target.checked,
-                voided: m && isEbsCourse(m) ? !e.target.checked : log.voided,
+                voided:
+                  m && (isEbsCourse(m) || isDayBook(m))
+                    ? !e.target.checked
+                    : log.voided,
               })
             }
           />{" "}

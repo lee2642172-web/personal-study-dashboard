@@ -1,3 +1,5 @@
+import { DayBook } from "./DayBook";
+import { isDayBook } from "./dayLearning";
 import { localDate, type TimePeriod } from "./dates";
 import { learningTime } from "./studyTime";
 import { useState } from "react";
@@ -655,6 +657,7 @@ export function MaterialPage() {
     );
   const m = material;
   if (isEbsCourse(m)) return <Navigate to="/english/ebs" replace />;
+  if (isDayBook(m)) return <DayBook material={m} />;
   const p = progress(m, data.logs, round);
   const items = m.kind === "audio" ? episodes(m, month) : unitItems(m);
   const currentPage = Math.min(

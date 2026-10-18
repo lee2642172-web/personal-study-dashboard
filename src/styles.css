@@ -3053,3 +3053,382 @@ footer > span:first-child {
 .log-row.is-voided h3 {
   color: #8d99aa;
 }
+
+/* Day books: persisted learning cursor and independent browsing position. */
+.daybook-resume {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(230px, 1fr);
+  gap: 35px;
+  align-items: center;
+  background: linear-gradient(125deg, #eaf0fc, #f4f7fe);
+  border: 1px solid #dce6f7;
+  border-radius: 16px;
+  padding: 32px;
+  margin: 0 0 24px;
+}
+.daybook-resume h2 {
+  font-size: 25px;
+  line-height: 1.6;
+  color: #56739d;
+  font-weight: 500;
+  letter-spacing: -0.7px;
+}
+.daybook-resume h2 strong {
+  font-size: 36px;
+  font-weight: 750;
+  color: #436ba8;
+  margin-left: 7px;
+  white-space: nowrap;
+}
+.daybook-resume-copy > p:not(.eyebrow) {
+  font-size: 12px;
+  color: #8d9fbb;
+  line-height: 1.9;
+  margin-top: 12px;
+}
+.daybook-resume-button {
+  margin-top: 23px;
+  font-size: 14px;
+  min-height: 50px;
+  padding: 14px 20px;
+  background: #4f72b3;
+  border-color: #4f72b3;
+}
+.daybook-resume-progress .status-pill {
+  background: #f7f9fe;
+  color: #7890b5;
+  margin-bottom: 20px;
+}
+.daybook-resume-progress .progress {
+  height: 7px;
+  background: #dce5f5;
+}
+.daybook-resume-progress > small {
+  display: block;
+  font-size: 10px;
+  color: #99abc5;
+  margin-top: 14px;
+  line-height: 1.8;
+}
+.daybook-no-progress {
+  font-size: 15px;
+  color: #7e94b6;
+}
+.daybook-no-progress span {
+  display: block;
+  font-size: 10px;
+  margin-top: 10px;
+  color: #9caec8;
+}
+.daybook-rounds {
+  padding: 20px 24px;
+  border: 1px solid #e4eaf2;
+  border-radius: 13px;
+  background: white;
+  margin-bottom: 18px;
+}
+.daybook-rounds > div {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+.daybook-rounds label {
+  display: block;
+  color: #8998ae;
+  font-size: 11px;
+}
+.daybook-rounds > div label {
+  flex: 1;
+}
+.daybook-rounds details {
+  border-top: 1px solid #edf1f6;
+  padding-top: 14px;
+  margin-top: 17px;
+}
+.daybook-rounds summary {
+  color: #9aa8bc;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 6px 0;
+}
+.daybook-rounds form {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  margin-top: 12px;
+}
+.daybook-rounds form label {
+  flex: 1;
+}
+.daybook-last-review {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 14px 20px;
+  border: 1px solid #e4eaf4;
+  border-radius: 11px;
+  background: #f0f4fb;
+  margin-bottom: 15px;
+}
+.daybook-last-review > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #8a9dbd;
+}
+.daybook-last-review svg {
+  flex-shrink: 0;
+}
+.daybook-last-review p {
+  font-size: 11px;
+  line-height: 1.9;
+}
+.daybook-last-review button {
+  font-size: 11px;
+  color: #6d86b0;
+}
+.daybook-notice {
+  font-size: 11px;
+  color: #96a5bb;
+  line-height: 2;
+  margin: 17px 2px 22px;
+}
+.daybook-current {
+  padding: 27px;
+  background: white;
+  border: 1px solid #e1e8f3;
+  border-radius: 15px;
+}
+.daybook-current-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+.daybook-current-heading h2 {
+  font-size: 25px;
+  letter-spacing: -0.6px;
+  color: #526882;
+  scroll-margin-top: 24px;
+}
+.daybook-current-heading h2:focus {
+  outline: none;
+}
+.status-pill.daybook-done {
+  color: #568270;
+  background: #edf5f1;
+}
+.daybook-navigation {
+  display: flex;
+  align-items: flex-end;
+  gap: 15px;
+  padding: 19px;
+  border: 1px solid #eaf0f7;
+  border-radius: 11px;
+  background: #f8fafd;
+}
+.daybook-navigation label {
+  flex: 1;
+  color: #91a1b8;
+  font-size: 10px;
+}
+.daybook-navigation button {
+  font-size: 11px;
+  min-height: 44px;
+}
+.daybook-current-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin: 30px 0 15px;
+}
+.daybook-current-body h3 {
+  font-size: 20px;
+  letter-spacing: -0.5px;
+}
+.daybook-current-body p {
+  font-size: 12px;
+  color: #8ca0bc;
+  margin-top: 11px;
+}
+.daybook-current-body small {
+  display: block;
+  font-size: 10px;
+  color: #a0adbe;
+  line-height: 1.9;
+  margin-top: 13px;
+}
+.daybook-review-button {
+  min-height: 50px;
+  font-size: 12px;
+  white-space: normal;
+}
+.daybook-history {
+  border-top: 1px solid #eaf0f7;
+  margin-top: 25px;
+  padding-top: 17px;
+}
+.daybook-history summary {
+  color: #8c9fb9;
+  font-size: 11px;
+  cursor: pointer;
+  min-height: 30px;
+}
+.daybook-history article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 15px 3px;
+  border-bottom: 1px solid #edf1f6;
+}
+.daybook-history article strong {
+  font-size: 12px;
+  color: #768aa7;
+  font-weight: 550;
+}
+.daybook-history article p {
+  font-size: 10px;
+  line-height: 1.9;
+  color: #9cabc0;
+  margin-top: 8px;
+}
+.daybook-history article > div:last-child {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.daybook-history button {
+  font-size: 10px;
+}
+.daybook-info {
+  padding: 21px 24px;
+  border: 1px solid #e7ecf4;
+  border-radius: 12px;
+  background: #fafbfd;
+  margin: 24px 0;
+}
+.daybook-info summary {
+  color: #96a5bb;
+  font-size: 11px;
+  cursor: pointer;
+  min-height: 27px;
+}
+.daybook-info label {
+  display: block;
+  font-size: 11px;
+  color: #91a1b6;
+  max-width: 200px;
+  margin-top: 18px;
+}
+.daybook-info p {
+  color: #9aa7ba;
+  font-size: 11px;
+  line-height: 2;
+  margin-top: 14px;
+}
+@media (max-width: 1050px) {
+  .daybook-resume {
+    gap: 23px;
+    padding: 25px;
+    grid-template-columns: minmax(0, 1.3fr) minmax(210px, 1fr);
+  }
+  .daybook-resume h2 {
+    font-size: 21px;
+  }
+  .daybook-resume h2 strong {
+    font-size: 31px;
+  }
+  .daybook-current-body {
+    align-items: flex-start;
+  }
+  .daybook-current-body small {
+    max-width: 270px;
+  }
+}
+@media (max-width: 650px) {
+  .daybook-resume {
+    grid-template-columns: 1fr;
+    gap: 25px;
+    padding: 23px;
+  }
+  .daybook-resume h2 strong {
+    font-size: 32px;
+    display: block;
+    margin-left: 0;
+  }
+  .daybook-resume-button {
+    width: 100%;
+    font-size: 12px;
+    padding: 13px;
+  }
+  .daybook-rounds {
+    padding: 18px;
+  }
+  .daybook-rounds > div {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .daybook-rounds > div label {
+    flex-basis: 100%;
+  }
+  .daybook-rounds > div button {
+    width: 100%;
+  }
+  .daybook-last-review {
+    flex-wrap: wrap;
+    padding: 16px;
+    gap: 7px;
+  }
+  .daybook-last-review > div {
+    width: 100%;
+  }
+  .daybook-last-review button {
+    justify-content: flex-start;
+  }
+  .daybook-current {
+    padding: 20px 15px;
+  }
+  .daybook-current-heading h2 {
+    font-size: 22px;
+  }
+  .daybook-navigation {
+    padding: 14px 9px;
+    gap: 7px;
+    flex-wrap: wrap;
+  }
+  .daybook-navigation label {
+    order: -1;
+    flex-basis: 100%;
+    margin-bottom: 6px;
+  }
+  .daybook-navigation button {
+    flex: 1;
+    padding: 9px 7px;
+    font-size: 10px;
+  }
+  .daybook-current-body {
+    flex-direction: column;
+    gap: 21px;
+    margin-top: 25px;
+  }
+  .daybook-current-body > div {
+    width: 100%;
+  }
+  .daybook-current-body small {
+    max-width: none;
+  }
+  .daybook-review-button {
+    width: 100%;
+  }
+  .daybook-history article {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .daybook-info {
+    padding: 20px;
+  }
+}
