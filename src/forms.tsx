@@ -1,3 +1,4 @@
+import { isEbsCourse, scheduled, validDate } from "./ebs";
 import { useState, type FormEvent } from "react";
 import { useData } from "./state";
 import { Dialog, FieldSelect, ActivityLabels } from "./ui";
@@ -217,10 +218,12 @@ export function LogForm({
   value,
   onClose,
   practice = false,
+  lockMaterial = false,
 }: {
   value: StudyLog;
   onClose: () => void;
   practice?: boolean;
+  lockMaterial?: boolean;
 }) {
   const { data, update } = useData();
   const [log, setLog] = useState(value);
@@ -250,6 +253,23 @@ export function LogForm({
       setError("회차는 YYYY-MM-DD 형식으로 입력해 주세요.");
       return;
     }
+    if (m && isEbsCourse(m) && log.activity !== "system") {
+      const existing = data.logs.find((entry) => entry.id === log.id);
+      if (!validDate(log.item) || (!existing && !scheduled(m, log.item))) {
+        setError(
+          "EBS 회차의 실제 발행일을 선택해 주세요. 기본 발행 요일 외 기존 이력은 유지됩니다.",
+        );
+        return;
+      }
+      if (log.completed && log.item > today()) {
+        setError("아직 발행되지 않은 미래 회차는 완료 처리할 수 없습니다.");
+        return;
+      }
+      if (log.date && (log.date < log.item || log.date > today())) {
+        setError("실제 청취일은 콘텐츠 발행일부터 오늘 사이로 입력해 주세요.");
+        return;
+      }
+    }
     update((d) => ({
       ...d,
       logs: d.logs.some((x) => x.id === log.id)
@@ -264,29 +284,40 @@ export function LogForm({
       onClose={onClose}
     >
       <form className="v1-form" onSubmit={submit}>
-        <div className="form-grid">
-          <FieldSelect
-            value={log.area}
-            onChange={(area) => patch({ area, materialId: "", item: "" })}
-          />
-          <label>
-            활동 구분
-            <select
-              aria-label="활동 구분"
-              value={log.activity}
-              onChange={(e) =>
-                patch({ activity: e.target.value as StudyLog["activity"] })
-              }
-            >
-              {Object.entries(ActivityLabels).map(([id, label]) => (
-                <option value={id} key={id}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {!practice && (
+        {lockMaterial && (
+          <div className="ebs-batch-info">
+            <strong>{m?.title}</strong>
+            <p>
+              콘텐츠 발행일 {log.item} ·{" "}
+              {log.activity === "review" ? "재청취 / 복습" : "청취"}
+            </p>
+          </div>
+        )}
+        {!lockMaterial && (
+          <div className="form-grid">
+            <FieldSelect
+              value={log.area}
+              onChange={(area) => patch({ area, materialId: "", item: "" })}
+            />
+            <label>
+              활동 구분
+              <select
+                aria-label="활동 구분"
+                value={log.activity}
+                onChange={(e) =>
+                  patch({ activity: e.target.value as StudyLog["activity"] })
+                }
+              >
+                {Object.entries(ActivityLabels).map(([id, label]) => (
+                  <option value={id} key={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+        {!practice && !lockMaterial && (
           <>
             <label>
               학습 자료 (선택)
@@ -349,6 +380,12 @@ export function LogForm({
             <input
               type="date"
               required={log.origin !== "reported"}
+              min={
+                m && isEbsCourse(m) && log.activity !== "system"
+                  ? log.item
+                  : undefined
+              }
+              max={m && isEbsCourse(m) ? today() : undefined}
               value={log.date ?? ""}
               onChange={(e) => patch({ date: e.target.value || null })}
             />

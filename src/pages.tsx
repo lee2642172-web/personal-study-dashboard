@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import {
   ArrowUpRight,
   ArrowLeft,
@@ -13,6 +13,8 @@ import {
   Layers3,
 } from "lucide-react";
 import { useData } from "./state";
+import { EbsCard } from "./Ebs";
+import { isEbsCourse } from "./ebs";
 import {
   PageHeading,
   Section,
@@ -311,7 +313,18 @@ export function Home() {
       <Section title="진행 중인 학습 자료" tag="IN PROGRESS" link="/library">
         <div className="v1-three-grid">
           {active.length ? (
-            active.map((m) => <MaterialSummary key={m.id} material={m} />)
+            <>
+              {active.some(isEbsCourse) && (
+                <div className="ebs-home-group">
+                  <EbsCard />
+                </div>
+              )}
+              {active
+                .filter((m) => !isEbsCourse(m))
+                .map((m) => (
+                  <MaterialSummary key={m.id} material={m} />
+                ))}
+            </>
           ) : (
             <Empty>
               학습 중인 자료가 없습니다. 보관함에서 상태를 변경할 수 있습니다.
@@ -384,13 +397,16 @@ export function English() {
         </div>
       </div>
       <Section title="출근길 · EBS 오디오어학당" tag="MORNING ROUTINE">
-        <div className="v1-three-grid">
-          {materials
-            .filter((m) => m.kind === "audio")
-            .map((m) => (
-              <MaterialSummary key={m.id} material={m} />
-            ))}
-        </div>
+        <EbsCard />
+        {materials.some((m) => m.kind === "audio" && !isEbsCourse(m)) && (
+          <div className="v1-three-grid ebs-other-audio">
+            {materials
+              .filter((m) => m.kind === "audio" && !isEbsCourse(m))
+              .map((m) => (
+                <MaterialSummary key={m.id} material={m} />
+              ))}
+          </div>
+        )}
       </Section>
       <Section title="퇴근길 · Grammar in Use" tag="EVENING ROUTINE">
         <div className="v1-two-grid">
@@ -598,6 +614,7 @@ export function MaterialPage() {
       </Empty>
     );
   const m = material;
+  if (isEbsCourse(m)) return <Navigate to="/english/ebs" replace />;
   const p = progress(m, data.logs, round);
   const items = m.kind === "audio" ? episodes(m, month) : unitItems(m);
   const currentPage = Math.min(

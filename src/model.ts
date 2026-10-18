@@ -36,6 +36,7 @@ export type Material = {
   id: string;
   title: string;
   area: FieldId;
+  groupId?: string;
   kind: "audio" | "units" | "days" | "reference" | "book";
   status: MaterialStatus;
   total: number | null;

@@ -28,6 +28,7 @@ export function createInitialData(): DashboardData {
     ...["Start English", "Easy English", "Power English"].map((title, i) =>
       material(`ebs-${i}`, title, {
         kind: "audio",
+        groupId: "ebs-audio",
         status: "학습 중",
         schedule: i === 2 ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5],
         startDate: "2026-04-01",

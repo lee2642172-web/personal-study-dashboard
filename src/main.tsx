@@ -23,6 +23,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import LegacyApp from "./LegacyApp";
+import { EbsPage } from "./Ebs";
 import { DataProvider, useData } from "./state";
 import {
   Home,
@@ -55,7 +56,7 @@ function App() {
   }, [location.pathname]);
   const fieldId = location.pathname.split("/")[2];
   const activePath =
-    location.pathname === "/english" ||
+    location.pathname.startsWith("/english") ||
     ["chinese", "japanese", "spanish"].includes(fieldId)
       ? "/languages"
       : location.pathname.startsWith("/fields/")
@@ -142,6 +143,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/english" element={<English />} />
+            <Route path="/english/ebs" element={<EbsPage />} />
             <Route
               path="/languages"
               element={<Category category="languages" />}

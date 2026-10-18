@@ -1,3 +1,4 @@
+import { connectEbsGroup } from "./ebs.ts";
 import { type DashboardData, fields, materialStatuses } from "./model.ts";
 export const STORAGE_KEY = "personal-study-dashboard:v1";
 export interface DashboardRepository {
@@ -41,6 +42,7 @@ export function validData(v: unknown): v is DashboardData {
           String(m.kind),
         ) &&
         materialStatuses.includes(m.status as never) &&
+        (m.groupId === undefined || typeof m.groupId === "string") &&
         positiveOrNull(m.total) &&
         positiveOrNull(m.targetPasses) &&
         numberOrNull(m.duration) &&
@@ -120,7 +122,7 @@ export const browserRepository: DashboardRepository = {
       throw new Error(
         "저장된 데이터 형식을 읽을 수 없습니다. 원본을 보존하며 저장을 중단했습니다.",
       );
-    return data;
+    return connectEbsGroup(data);
   },
   save(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
