@@ -28,6 +28,7 @@ import {
   validDate,
   EBS_START,
   recordEbsLearning,
+  toggleEbsLearning,
   EBS_DEFAULT_MINUTES,
 } from "./ebs";
 const monthLabel = (month: string) =>
@@ -133,6 +134,26 @@ export function EbsPage() {
     );
     setNotice(
       `${course.title} · ${replay ? "추가 학습" : "완료"} · ${learnedDate} · ${EBS_DEFAULT_MINUTES}분 기록`,
+    );
+  }
+  function toggle(course: Material) {
+    const learnedDate = localDate();
+    const id = newId();
+    const wasCompleted = courseDay(
+      course,
+      data.logs,
+      date,
+      learnedDate,
+    ).completed;
+    const restoring = courseDay(
+      course,
+      data.logs,
+      date,
+      learnedDate,
+    ).entries.some((l) => l.voided);
+    update((d) => toggleEbsLearning(d, course.id, date, learnedDate, id));
+    setNotice(
+      `${course.title} · ${wasCompleted ? "완료 취소 · 기록은 보관되며 시간 집계에서 제외됩니다" : restoring ? "학습 완료 복원 · 기존 날짜와 시간을 유지합니다" : `학습 완료 · ${learnedDate} · 기본 18분 기록`}`,
     );
   }
   function completeAll() {
@@ -338,11 +359,11 @@ export function EbsPage() {
             </p>
           </div>
           <button
-            className="primary-button ebs-batch-button"
+            className={`primary-button ebs-batch-button ${!pending.length && eligible.length > 0 ? "all-complete" : ""}`}
             disabled={!pending.length}
             onClick={completeAll}
           >
-            <Check size={17} />
+            {!pending.length && eligible.length > 0 && <Check size={17} />}
             {pending.length
               ? `미기록 ${pending.length}개 강좌 일괄 완료`
               : eligible.length
@@ -372,9 +393,11 @@ export function EbsPage() {
                       ? "발행 예정"
                       : day.completed
                         ? "완료"
-                        : available
-                          ? "기록 없음"
-                          : "발행 없음"}
+                        : day.entries.some((l) => l.voided)
+                          ? "미완료"
+                          : available
+                            ? "기록 없음"
+                            : "발행 없음"}
                   </span>
                 </div>
                 {available && (
@@ -395,15 +418,31 @@ export function EbsPage() {
                     )}
                     <div className="ebs-daily-actions ebs-quick-actions">
                       <button
-                        className="primary-button ebs-complete-button"
-                        disabled={day.future || day.completed}
-                        onClick={() => add(course)}
+                        className={`primary-button ebs-complete-button ${day.completed ? "is-complete" : ""}`}
+                        aria-label={
+                          day.completed ? "✓ 학습 완료 ↩" : "학습 완료하기"
+                        }
+                        aria-pressed={day.completed}
+                        title={
+                          day.completed
+                            ? "다시 누르면 완료 취소 · 기록과 날짜·시간은 보관됩니다"
+                            : "기본 18분으로 학습 기록 생성"
+                        }
+                        disabled={day.future}
+                        onClick={() => toggle(course)}
                       >
-                        <Check size={17} />
-                        {day.completed ? "완료됨" : "완료"}
+                        {day.completed && (
+                          <Check size={17} aria-hidden="true" />
+                        )}
+                        {day.completed ? "학습 완료" : "학습 완료하기"}
+                        {day.completed && <span aria-hidden="true">↩</span>}
                       </button>
                       <small className="ebs-quick-hint">
-                        버튼을 누른 날 · 기본 {EBS_DEFAULT_MINUTES}분
+                        {day.completed
+                          ? "다시 누르면 완료 취소 · 기록은 보관됩니다"
+                          : day.entries.some((l) => l.voided)
+                            ? "다시 누르면 기존 날짜·시간으로 복원됩니다"
+                            : `버튼을 누른 날 · 기본 ${EBS_DEFAULT_MINUTES}분`}
                       </small>
                       {day.entries.length > 0 && (
                         <div className="ebs-secondary-actions">
@@ -437,8 +476,12 @@ export function EbsPage() {
                         {day.entries.map((entry) => (
                           <div key={entry.id}>
                             <p>
-                              {entry.completed ? "완료" : "진행 중"} · 실제
-                              청취일 {entry.date ?? "미입력"}
+                              {entry.voided
+                                ? "완료 취소 · 집계 제외"
+                                : entry.completed
+                                  ? "완료"
+                                  : "진행 중"}{" "}
+                              · 실제 청취일 {entry.date ?? "미입력"}
                               <br />
                               {entry.minutes === null
                                 ? "시간 미입력"

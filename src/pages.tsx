@@ -206,7 +206,7 @@ function FieldCards({
         .map((f) => {
           const materials = data.materials.filter((m) => m.area === f.id);
           const logs = data.logs.filter(
-            (l) => l.area === f.id && l.activity !== "system",
+            (l) => l.area === f.id && l.activity !== "system" && !l.voided,
           );
           const Icon = f.category === "languages" ? Globe2 : GraduationCap;
           return (
@@ -250,6 +250,7 @@ export function Home() {
     measured,
     system,
     studyMinutes: time,
+    hasStudyTime,
   } = learningTime(data.logs, period, selectedDate);
   const active = data.materials.filter((m) => m.status === "학습 중");
   return (
@@ -307,7 +308,7 @@ export function Home() {
               ? "전체 학습 · 복습시간"
               : "선택 기간 학습 · 복습시간"
           }
-          value={measured.length ? `${time}분` : "미기록"}
+          value={hasStudyTime ? `${time}분` : "미기록"}
           note={`날짜·시간 기록 ${measured.length}건 · EBS 기본 18분 포함`}
         />
         <Stat
@@ -390,7 +391,7 @@ export function Home() {
       >
         <LogList
           logs={data.logs
-            .filter((l) => l.date)
+            .filter((l) => l.date && !l.voided)
             .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
             .slice(0, 5)}
         />
@@ -884,7 +885,10 @@ export function LogList({
         </Empty>
       ) : (
         logs.map((l) => (
-          <article className="log-row" key={l.id}>
+          <article
+            className={`log-row ${l.voided ? "is-voided" : ""}`}
+            key={l.id}
+          >
             <span className={`log-type ${l.activity}`}>
               {ActivityLabels[l.activity]}
             </span>
@@ -897,7 +901,8 @@ export function LogList({
                     "자유 기록"}
               </h3>
               <p>
-                {l.completed ? "완료" : "진행 중"} · {fieldName(l.area)} ·{" "}
+                {l.voided ? "완료 취소" : l.completed ? "완료" : "진행 중"} ·{" "}
+                {fieldName(l.area)} ·{" "}
                 {l.item
                   ? data.materials.some(
                       (m) => m.id === l.materialId && isEbsCourse(m),
@@ -907,6 +912,7 @@ export function LogList({
                   : ""}
                 실제 학습일 {l.date || "미입력"} ·{" "}
                 {l.minutes === null ? "시간 미입력" : `${l.minutes}분`}
+                {l.voided ? " (집계 제외)" : ""}
               </p>
               {l.origin === "reported" && (
                 <small>사용자 제공 기존 이력 · 발행일 ≠ 실제 청취일</small>
@@ -945,10 +951,11 @@ export function Records() {
       (!date || l.date === date),
   );
   const sum = (activity: string) => {
-    const measured = filtered.filter(
+    const timed = filtered.filter(
       (l) => l.activity === activity && l.minutes !== null,
     );
-    return measured.length
+    const measured = timed.filter((l) => !l.voided);
+    return timed.length
       ? `${measured.reduce((s, l) => s + (l.minutes ?? 0), 0)}분`
       : "미기록";
   };

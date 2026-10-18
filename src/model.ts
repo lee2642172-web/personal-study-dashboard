@@ -64,6 +64,8 @@ export type StudyLog = {
   speaking: string;
   origin: "reported" | "entered";
   completed: boolean;
+  /** Cancelled completion retained for undo; excluded from active time totals. */
+  voided?: boolean;
 };
 export type Goal = {
   id: string;
@@ -127,6 +129,7 @@ export function progress(material: Material, logs: StudyLog[], round = 1) {
       .filter(
         (l) =>
           l.completed &&
+          !l.voided &&
           l.round === round &&
           Number(l.item) >= 1 &&
           Number(l.item) <= (material.total ?? 0),

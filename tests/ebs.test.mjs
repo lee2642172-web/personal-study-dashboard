@@ -6,6 +6,7 @@ import { createInitialData } from "../src/initialData.ts";
 import { browserRepository, STORAGE_KEY } from "../src/storage.ts";
 import {
   recordEbsLearning,
+  toggleEbsLearning,
   EBS_GROUP_ID,
   connectEbsGroup,
   ebsCourses,
@@ -317,4 +318,129 @@ test("quick completion roundtrips through local storage with both date fields in
   });
   browserRepository.save(data);
   assert.deepEqual(browserRepository.load(), data);
+});
+
+test("completion toggle cancels and restores the same records with matching monthly progress and time", () => {
+  const original = createInitialData();
+  const on = toggleEbsLearning(
+    original,
+    "ebs-0",
+    "2026-04-08",
+    "2026-10-18",
+    "toggle-on",
+  );
+  const replay = recordEbsLearning(
+    on,
+    "ebs-0",
+    "2026-04-08",
+    "2026-10-18",
+    "toggle-review",
+    true,
+  );
+  const withOther = recordEbsLearning(
+    replay,
+    "ebs-1",
+    "2026-04-08",
+    "2026-10-18",
+    "other-course",
+  );
+  const off = toggleEbsLearning(
+    withOther,
+    "ebs-0",
+    "2026-04-08",
+    "2026-10-18",
+    "toggle-off",
+  );
+  assert.equal(off.logs.length, withOther.logs.length);
+  assert.equal(
+    courseDay(off.materials[0], off.logs, "2026-04-08", "2026-10-18").completed,
+    false,
+  );
+  assert.ok(
+    off.logs
+      .filter((l) => ["toggle-on", "toggle-review"].includes(l.id))
+      .every((l) => !l.completed && l.voided && l.minutes === 18),
+  );
+  assert.equal(learningTime(off.logs).studyMinutes, 18);
+  assert.equal(
+    monthStats(ebsCourses(off.materials), off.logs, "2026-04", "2026-10-18")
+      .done,
+    17,
+  );
+  const restored = toggleEbsLearning(
+    off,
+    "ebs-0",
+    "2026-04-08",
+    "2026-10-19",
+    "toggle-restore",
+  );
+  assert.equal(restored.logs.length, off.logs.length);
+  assert.equal(learningTime(restored.logs).studyMinutes, 54);
+  assert.ok(
+    restored.logs
+      .filter((l) => ["toggle-on", "toggle-review"].includes(l.id))
+      .every((l) => l.completed && !l.voided && l.date === "2026-10-18"),
+  );
+  assert.deepEqual(restored.logs.slice(0, original.logs.length), original.logs);
+});
+test("toggle cancellation gives zero recorded time and persists across reload without deleting edits", () => {
+  let d = toggleEbsLearning(
+    createInitialData(),
+    "ebs-0",
+    "2026-04-08",
+    "2026-10-18",
+    "edited-toggle",
+  );
+  d = {
+    ...d,
+    logs: d.logs.map((l) =>
+      l.id === "edited-toggle" ? { ...l, minutes: 27, date: "2026-10-17" } : l,
+    ),
+  };
+  const off = toggleEbsLearning(d, "ebs-0", "2026-04-08", "2026-10-18", "off");
+  const time = learningTime(off.logs);
+  assert.equal(time.hasStudyTime, true);
+  assert.equal(time.studyMinutes, 0);
+  const entries = new Map();
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k) => entries.get(k) ?? null,
+      setItem: (k, v) => entries.set(k, v),
+    },
+  });
+  browserRepository.save(off);
+  const loaded = browserRepository.load();
+  assert.deepEqual(loaded, off);
+  const restored = toggleEbsLearning(
+    loaded,
+    "ebs-0",
+    "2026-04-08",
+    "2026-10-18",
+    "restore",
+  );
+  const log = restored.logs.find((l) => l.id === "edited-toggle");
+  assert.equal(log.minutes, 27);
+  assert.equal(log.date, "2026-10-17");
+  assert.equal(log.completed, true);
+  assert.equal(learningTime(restored.logs).studyMinutes, 27);
+});
+test("toggling an existing unknown-time history does not invent a date or default 18 minutes on restore", () => {
+  const d = createInitialData();
+  const off = toggleEbsLearning(
+    d,
+    "ebs-0",
+    "2026-04-07",
+    "2026-10-18",
+    "unused-off",
+  );
+  const restored = toggleEbsLearning(
+    off,
+    "ebs-0",
+    "2026-04-07",
+    "2026-10-18",
+    "unused-restore",
+  );
+  assert.equal(restored.logs.length, d.logs.length);
+  assert.ok(restored.logs.every((l) => l.date === null && l.minutes === null));
 });

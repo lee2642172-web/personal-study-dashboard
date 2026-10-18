@@ -440,7 +440,12 @@ export function LogForm({
           <input
             type="checkbox"
             checked={log.completed}
-            onChange={(e) => patch({ completed: e.target.checked })}
+            onChange={(e) =>
+              patch({
+                completed: e.target.checked,
+                voided: m && isEbsCourse(m) ? !e.target.checked : log.voided,
+              })
+            }
           />{" "}
           학습 완료 (해제해도 기록과 시간은 유지)
         </label>

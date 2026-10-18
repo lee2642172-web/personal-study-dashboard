@@ -58,7 +58,7 @@ export function courseDay(
     entries,
     scheduled: scheduled(m, date),
     future: date > asOf,
-    completed: entries.some((l) => l.completed),
+    completed: entries.some((l) => l.completed && !l.voided),
   };
 }
 export function monthStats(
@@ -79,7 +79,9 @@ export function monthStats(
       ...history.filter((l) => l.item <= asOf).map((l) => l.item),
     ]);
     const done = new Set(
-      history.filter((l) => l.completed && l.item <= asOf).map((l) => l.item),
+      history
+        .filter((l) => l.completed && !l.voided && l.item <= asOf)
+        .map((l) => l.item),
     );
     return {
       course,
@@ -108,6 +110,7 @@ export function defaultEbsDate(
           ids.has(l.materialId) &&
           l.activity !== "system" &&
           l.completed &&
+          !l.voided &&
           validDate(l.item) &&
           l.item >= EBS_START &&
           l.item <= asOf,
@@ -156,6 +159,16 @@ export function recordEbsLearning(
   if (!day.scheduled && !day.entries.length) return data;
   if (!replay && day.completed) return data;
   if (replay && !day.completed) return data;
+  if (!replay && day.entries.some((l) => l.voided)) {
+    const ids = new Set(day.entries.filter((l) => l.voided).map((l) => l.id));
+    return {
+      ...data,
+      logs: data.logs.map((l) =>
+        ids.has(l.id) ? { ...l, completed: true, voided: false } : l,
+      ),
+    };
+  }
+
   const round =
     day.entries.reduce((highest, l) => Math.max(highest, l.round), 0) + 1;
   const log: StudyLog = {
@@ -176,4 +189,34 @@ export function recordEbsLearning(
     completed: true,
   };
   return { ...data, logs: [...data.logs, log] };
+}
+
+/** Toggle all completed listening/review records for a publication day without deleting history. */
+export function toggleEbsLearning(
+  data: DashboardData,
+  courseId: string,
+  contentDate: string,
+  learnedDate: string,
+  id: string,
+): DashboardData {
+  const course = ebsCourses(data.materials).find((m) => m.id === courseId);
+  if (
+    !course ||
+    !validDate(contentDate) ||
+    !validDate(learnedDate) ||
+    contentDate > learnedDate
+  )
+    return data;
+  const day = courseDay(course, data.logs, contentDate, learnedDate);
+  if (!day.completed)
+    return recordEbsLearning(data, courseId, contentDate, learnedDate, id);
+  const ids = new Set(
+    day.entries.filter((l) => l.completed && !l.voided).map((l) => l.id),
+  );
+  return {
+    ...data,
+    logs: data.logs.map((l) =>
+      ids.has(l.id) ? { ...l, completed: false, voided: true } : l,
+    ),
+  };
 }

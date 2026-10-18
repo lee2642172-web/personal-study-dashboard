@@ -6,10 +6,17 @@ export function learningTime(
   selected = localDate(),
   reference = localDate(),
 ) {
+  const hasStudyTime = logs.some(
+    (l) =>
+      l.activity !== "system" &&
+      l.minutes !== null &&
+      matchesActualDate(l.date, period, reference, selected),
+  );
+  const active = logs.filter((l) => !l.voided);
   const records =
     period === "all"
-      ? logs
-      : logs.filter((l) =>
+      ? active
+      : active.filter((l) =>
           matchesActualDate(l.date, period, reference, selected),
         );
   const dated = records.filter(
@@ -20,6 +27,7 @@ export function learningTime(
   const measured = dated.filter((l) => l.activity !== "system");
   const system = dated.filter((l) => l.activity === "system");
   return {
+    hasStudyTime,
     records,
     study: records.filter((l) => l.activity !== "system"),
     measured,
