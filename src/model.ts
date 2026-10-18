@@ -58,6 +58,8 @@ export type StudyLog = {
   date: string | null;
   minutes: number | null;
   activity: "study" | "review" | "system";
+  /** Explicit first learning of a Day; time counts, review-round progress does not. */
+  initialLearning?: boolean;
   note: string;
   topic: string;
   writing: string;
@@ -92,6 +94,8 @@ export type Task = {
 };
 export type DayRoundState = {
   round: number;
+  /** Frozen scope of a completed round when more Days are appended. */
+  totalDays?: number;
   nextDay: number | null;
   lastOpenedDay: number;
   lastReviewId?: string;
@@ -135,7 +139,10 @@ export function unitItems(material: Material): string[] {
 }
 export function progress(material: Material, logs: StudyLog[], round = 1) {
   const entries = logs.filter(
-    (l) => l.materialId === material.id && l.activity !== "system",
+    (l) =>
+      l.materialId === material.id &&
+      l.activity !== "system" &&
+      !l.initialLearning,
   );
   const count = new Set(
     entries
@@ -160,14 +167,23 @@ export function progress(material: Material, logs: StudyLog[], round = 1) {
         : null,
   };
 }
-export function completedRounds(material: Material, logs: StudyLog[]) {
+export function completedRounds(
+  material: Material,
+  logs: StudyLog[],
+  rounds?: DayRoundState[],
+) {
   if (!material.total || material.kind === "audio") return 0;
   return [
     ...new Set(
       logs.filter((l) => l.materialId === material.id).map((l) => l.round),
     ),
-  ].filter((round) => progress(material, logs, round).count >= material.total!)
-    .length;
+  ].filter((round) => {
+    const total = Math.min(
+      material.total!,
+      rounds?.find((r) => r.round === round)?.totalDays ?? material.total!,
+    );
+    return progress({ ...material, total }, logs, round).count >= total;
+  }).length;
 }
 export const companyExams: Record<string, string[]> = {
   english: ["OPIc", "OPI"],

@@ -3271,3 +3271,35 @@ footer > span:first-child {
     padding-right: 16px;
   }
 }
+.daybook-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.daybook-round-count {
+  font-size: 11px;
+  color: #96a5bb;
+  margin-bottom: 10px;
+}
+.daybook-learning-info {
+  background: #f4f7fc;
+  border: 1px solid #e3eaf6;
+  border-radius: 10px;
+  padding: 16px;
+  color: #6d86b0;
+}
+.daybook-learning-info p {
+  font-size: 12px;
+  line-height: 1.8;
+  margin-top: 8px;
+}
+@media (max-width: 650px) {
+  .daybook-toolbar {
+    flex-wrap: wrap;
+  }
+  .daybook-toolbar-actions button {
+    font-size: 11px;
+    padding: 9px;
+  }
+}

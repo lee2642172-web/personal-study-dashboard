@@ -49,6 +49,8 @@ export function validData(v: unknown): v is DashboardData {
           b.rounds.every(
             (r) =>
               object(r) &&
+              (r.totalDays === undefined ||
+                (positiveOrNull(r.totalDays) && r.totalDays !== null)) &&
               Number.isSafeInteger(r.round) &&
               Number(r.round) > 0 &&
               (r.nextDay === null ||
@@ -94,6 +96,8 @@ export function validData(v: unknown): v is DashboardData {
       (l) =>
         object(l) &&
         typeof l.completed === "boolean" &&
+        (l.initialLearning === undefined ||
+          typeof l.initialLearning === "boolean") &&
         (l.voided === undefined || typeof l.voided === "boolean") &&
         (l.contentDate === undefined ||
           (typeof l.contentDate === "string" && l.contentDate === l.item)) &&

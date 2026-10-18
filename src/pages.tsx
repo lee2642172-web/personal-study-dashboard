@@ -1,5 +1,5 @@
 import { DayBook } from "./DayBook";
-import { isDayBook } from "./dayLearning";
+import { isDayBook, getDayBook, dayRoundTotal } from "./dayLearning";
 import { localDate, type TimePeriod } from "./dates";
 import { learningTime } from "./studyTime";
 import { useState } from "react";
@@ -46,14 +46,22 @@ import {
 
 function MaterialSummary({ material: m }: { material: Material }) {
   const { data } = useData();
-  const displayRound = data.logs.reduce(
-    (highest, l) =>
-      l.materialId === m.id && l.activity !== "system"
-        ? Math.max(highest, l.round)
-        : highest,
-    1,
-  );
-  const p = progress(m, data.logs, displayRound);
+  const dayBook = isDayBook(m) ? getDayBook(data, m) : null;
+  const displayRound =
+    dayBook?.activeRound ??
+    data.logs.reduce(
+      (highest, l) =>
+        l.materialId === m.id && l.activity !== "system"
+          ? Math.max(highest, l.round)
+          : highest,
+      1,
+    );
+  const scope = dayBook ? dayRoundTotal(dayBook, displayRound) : m.total;
+  const p = progress({ ...m, total: scope }, data.logs, displayRound);
+  const initialCount = data.logs.filter(
+    (l) =>
+      l.materialId === m.id && l.initialLearning && l.completed && !l.voided,
+  ).length;
   const isTracked =
     m.kind === "units" || m.kind === "days" || m.kind === "book";
   return (
@@ -70,7 +78,7 @@ function MaterialSummary({ material: m }: { material: Material }) {
       {isTracked && m.total && p.entries.length > 0 ? (
         <Progress
           done={p.count}
-          total={m.total}
+          total={scope ?? m.total}
           label={`${displayRound}회독 ${m.kind === "units" ? "Unit" : m.kind === "days" ? "Day" : "페이지"}`}
         />
       ) : (
@@ -79,12 +87,17 @@ function MaterialSummary({ material: m }: { material: Material }) {
             ? p.entries.length
               ? `완료 청취 ${p.entries.filter((l) => l.completed).length}회 · 실제 날짜 별도`
               : "청취 기록 전 · 실제 날짜 별도"
-            : `${m.total ? `자료 규모 ${m.total} ${m.kind === "units" ? "Units" : m.kind === "days" ? "Days" : m.kind === "book" ? "페이지" : "개"} · ` : ""}학습 진도 ${p.entries.length ? "기록 있음" : "미입력"}`}
+            : `${m.total ? `자료 규모 ${m.total} ${m.kind === "units" ? "Units" : m.kind === "days" ? "Days" : m.kind === "book" ? "페이지" : "개"} · ` : ""}${isDayBook(m) ? "복습" : "학습"} 진도 ${p.entries.length ? "기록 있음" : "미입력"}`}
+        </p>
+      )}
+      {initialCount > 0 && (
+        <p className="micro-note">
+          자료 규모 {m.total} Days · 신규 학습 {initialCount}회
         </p>
       )}
       <p className="micro-note">
         {m.targetPasses
-          ? `목표 ${m.targetPasses}회독 · ${p.entries.length ? `완료 ${completedRounds(m, data.logs)}회독` : "회독 기록 전"}`
+          ? `목표 ${m.targetPasses}회독 · ${p.entries.length ? `완료 ${completedRounds(m, data.logs, dayBook?.rounds)}회독` : "회독 기록 전"}`
           : "자료 규모와 실제 학습은 별도로 관리"}
       </p>
     </Link>
@@ -893,7 +906,7 @@ export function LogList({
             key={l.id}
           >
             <span className={`log-type ${l.activity}`}>
-              {ActivityLabels[l.activity]}
+              {l.initialLearning ? "신규 학습" : ActivityLabels[l.activity]}
             </span>
             <div>
               <h3>
@@ -911,7 +924,9 @@ export function LogList({
                       (m) => m.id === l.materialId && isEbsCourse(m),
                     )
                     ? `콘텐츠 발행일 ${l.contentDate ?? l.item} · `
-                    : `${l.item} · ${l.round}회독 · `
+                    : l.initialLearning
+                      ? `Day ${l.item} · 신규 학습 · `
+                      : `${l.item} · ${l.round}회독 · `
                   : ""}
                 실제 학습일 {l.date || "미입력"} ·{" "}
                 {l.minutes === null ? "시간 미입력" : `${l.minutes}분`}

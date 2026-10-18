@@ -229,6 +229,7 @@ export function LogForm({
   const { data, update } = useData();
   const [log, setLog] = useState(value);
   const [error, setError] = useState("");
+  const fixedMaterial = lockMaterial || !!value.initialLearning;
   const patch = (p: Partial<StudyLog>) => setLog({ ...log, ...p });
   const m = data.materials.find((m) => m.id === log.materialId);
   function submit(e: FormEvent) {
@@ -285,16 +286,22 @@ export function LogForm({
       onClose={onClose}
     >
       <form className="v1-form" onSubmit={submit}>
-        {lockMaterial && (
+        {fixedMaterial && (
           <div className="ebs-batch-info">
             <strong>{m?.title}</strong>
             <p>
-              콘텐츠 발행일 {log.item} ·{" "}
-              {log.activity === "review" ? "재청취 / 복습" : "청취"}
+              {log.initialLearning ? (
+                `Day ${log.item} · 신규 학습`
+              ) : (
+                <>
+                  콘텐츠 발행일 {log.item} ·{" "}
+                  {log.activity === "review" ? "재청취 / 복습" : "청취"}
+                </>
+              )}
             </p>
           </div>
         )}
-        {!lockMaterial && (
+        {!fixedMaterial && (
           <div className="form-grid">
             <FieldSelect
               value={log.area}
@@ -318,7 +325,7 @@ export function LogForm({
             </label>
           </div>
         )}
-        {!practice && !lockMaterial && (
+        {!practice && !fixedMaterial && (
           <>
             <label>
               학습 자료 (선택)
@@ -447,7 +454,7 @@ export function LogForm({
             }
           />{" "}
           {m && isDayBook(m) && log.activity !== "system"
-            ? "학습 완료 (해제 후 저장하면 복습 기록 삭제)"
+            ? `학습 완료 (해제 후 저장하면 ${log.initialLearning ? "신규 학습" : "복습"} 기록 삭제)`
             : "학습 완료 (해제해도 기록과 시간은 유지)"}
         </label>
         <label>

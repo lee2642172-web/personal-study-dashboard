@@ -11,7 +11,10 @@ export const isDayBook = (m: Material) =>
   m.kind === "days" &&
   ["vocabulary", "phrases"].includes(m.id);
 const active = (log: StudyLog) =>
-  log.activity !== "system" && log.completed && !log.voided;
+  log.activity !== "system" &&
+  !log.initialLearning &&
+  log.completed &&
+  !log.voided;
 const totalDays = (m: Material) =>
   m.total && Number.isInteger(m.total) && m.total > 0 ? m.total : 0;
 export function dayCompleted(
@@ -54,7 +57,12 @@ export function getDayBook(data: DashboardData, m: Material): DayBookState {
       1,
       ...(stored?.rounds.map((r) => r.round) ?? []),
       ...data.logs
-        .filter((l) => l.materialId === m.id && l.activity !== "system")
+        .filter(
+          (l) =>
+            l.materialId === m.id &&
+            l.activity !== "system" &&
+            !l.initialLearning,
+        )
         .map((l) => l.round),
     ]),
   ].sort((a, b) => a - b);
@@ -64,9 +72,18 @@ export function getDayBook(data: DashboardData, m: Material): DayBookState {
     activeRound: stored?.activeRound ?? known.at(-1) ?? 1,
     rounds: known.map((round) => {
       const previous = stored?.rounds.find((r) => r.round === round);
-      const nextDay = nextUnfinished(data.logs, m.id, round, total);
+      const frozenTotal =
+        previous?.totalDays ??
+        (stored &&
+        total > stored.totalDays &&
+        nextUnfinished(data.logs, m.id, round, stored.totalDays) === null
+          ? stored.totalDays
+          : undefined);
+      const scope = Math.min(total, frozenTotal ?? total);
+      const nextDay = nextUnfinished(data.logs, m.id, round, scope);
       return {
         round,
+        ...(frozenTotal ? { totalDays: frozenTotal } : {}),
         nextDay,
         lastOpenedDay: Math.min(
           total || 1,
@@ -78,6 +95,12 @@ export function getDayBook(data: DashboardData, m: Material): DayBookState {
       };
     }),
   };
+}
+export function dayRoundTotal(book: DayBookState, round: number): number {
+  return Math.min(
+    book.totalDays,
+    book.rounds.find((r) => r.round === round)?.totalDays ?? book.totalDays,
+  );
 }
 function putBook(data: DashboardData, book: DayBookState): DashboardData {
   return {
@@ -127,7 +150,10 @@ export function startDayRound(data: DashboardData, id: string): DashboardData {
   if (!m) return data;
   const book = getDayBook(data, m);
   const highestLog = data.logs
-    .filter((l) => l.materialId === id && l.activity !== "system")
+    .filter(
+      (l) =>
+        l.materialId === id && l.activity !== "system" && !l.initialLearning,
+    )
     .reduce((n, l) => Math.max(n, l.round), 0);
   const round =
     book.rounds.reduce((n, r) => Math.max(n, r.round), highestLog) + 1;
@@ -171,7 +197,7 @@ export function saveDayAwareLog(
       : [...data.logs, next],
   };
   const affected = [previous, next]
-    .filter((l): l is StudyLog => !!l)
+    .filter((l): l is StudyLog => !!l && !l.initialLearning)
     .filter(
       (l, i, list) =>
         list.findIndex(
@@ -191,7 +217,7 @@ export function saveDayAwareLog(
       result.logs,
       m.id,
       record.round,
-      totalDays(m),
+      dayRoundTotal(before, record.round),
     );
     const sameTuple =
       previous?.materialId === next.materialId &&
@@ -257,7 +283,7 @@ export function recordDayReview(
     round < 1 ||
     !Number.isInteger(day) ||
     day < 1 ||
-    day > totalDays(m) ||
+    day > dayRoundTotal(getDayBook(data, m), round) ||
     data.logs.some((l) => l.id === logId)
   )
     return data;
@@ -291,15 +317,105 @@ export function cancelDayReview(
     !material ||
     !isDayBook(material) ||
     log.activity === "system" ||
-    (!active(log) && !log.voided)
+    (!log.completed && !log.voided)
   )
     return data;
   return saveDayAwareLog(data, { ...log, completed: false, voided: true });
 }
 /** Remove legacy cancelled word-book reviews without touching EBS or active history. */
 export function removeCancelledDayReviews(data: DashboardData): DashboardData {
-  return data.logs.filter((log) => log.voided).reduce(
-    (current, log) => cancelDayReview(current, log.id),
-    data,
+  return data.logs
+    .filter((log) => log.voided)
+    .reduce((current, log) => cancelDayReview(current, log.id), data);
+}
+
+/** Explicit first learning is independent of review rounds and never invents duration. */
+export function recordInitialDayLearning(
+  data: DashboardData,
+  materialId: string,
+  day: number,
+  logId: string,
+  date: string,
+  minutes: number | null = null,
+  note = "",
+): DashboardData {
+  const material = data.materials.find((m) => m.id === materialId);
+  if (
+    !material ||
+    !isDayBook(material) ||
+    !Number.isInteger(day) ||
+    day < 1 ||
+    day > totalDays(material) ||
+    !logId ||
+    data.logs.some((l) => l.id === logId) ||
+    !isDateString(date) ||
+    (minutes !== null && (!Number.isFinite(minutes) || minutes < 0))
+  )
+    return data;
+  const book = getDayBook(data, material);
+  return {
+    ...data,
+    logs: [
+      ...data.logs,
+      {
+        id: logId,
+        area: material.area,
+        materialId,
+        item: String(day),
+        round: book.activeRound,
+        date,
+        minutes,
+        activity: "study",
+        initialLearning: true,
+        note: note.trim(),
+        topic: "",
+        writing: "",
+        speaking: "",
+        origin: "entered",
+        completed: true,
+      },
+    ],
+  };
+}
+/** Append and first-learning record commit together; completed review scopes stay frozen. */
+export function addDayLearning(
+  data: DashboardData,
+  materialId: string,
+  expectedDay: number,
+  logId: string,
+  date: string,
+  minutes: number | null = null,
+  note = "",
+): DashboardData {
+  const material = data.materials.find((m) => m.id === materialId);
+  if (
+    !material ||
+    !isDayBook(material) ||
+    expectedDay !== totalDays(material) + 1 ||
+    expectedDay > 10000
+  )
+    return data;
+  const initialized = ensureDayBook(data, materialId);
+  const updated = {
+    ...initialized,
+    materials: initialized.materials.map((m) =>
+      m.id === materialId ? { ...m, total: expectedDay } : m,
+    ),
+  };
+  const recorded = recordInitialDayLearning(
+    updated,
+    materialId,
+    expectedDay,
+    logId,
+    date,
+    minutes,
+    note,
   );
+  if (recorded === updated) return data;
+  const ready = ensureDayBook(recorded, materialId);
+  const book = getDayBook(
+    ready,
+    ready.materials.find((m) => m.id === materialId)!,
+  );
+  return openDay(ready, materialId, book.activeRound, expectedDay);
 }
