@@ -930,7 +930,9 @@ export function LogList({
                 {l.voided ? " (집계 제외)" : ""}
               </p>
               {l.origin === "reported" && (
-                <small>사용자 제공 기존 이력 · 발행일 ≠ 실제 청취일</small>
+                <small>
+                  사용자 제공 기존 학습 이력{!l.date && " · 실제 학습일 미입력"}
+                </small>
               )}
               {l.writing && <p className="log-content">영작: {l.writing}</p>}
               {l.speaking && (
@@ -961,6 +963,7 @@ export function Records() {
   const [date, setDate] = useState("");
   const filtered = data.logs.filter(
     (l) =>
+      !l.voided &&
       (type === "all" || l.activity === type) &&
       (area === "all" || l.area === area) &&
       (!date || l.date === date),
@@ -969,9 +972,8 @@ export function Records() {
     const timed = filtered.filter(
       (l) => l.activity === activity && l.minutes !== null,
     );
-    const measured = timed.filter((l) => !l.voided);
     return timed.length
-      ? `${measured.reduce((s, l) => s + (l.minutes ?? 0), 0)}분`
+      ? `${timed.reduce((s, l) => s + (l.minutes ?? 0), 0)}분`
       : "미기록";
   };
   return (
@@ -979,7 +981,7 @@ export function Records() {
       <PageHeading
         eyebrow="LEARNING LOG"
         title="학습 기록"
-        description="학습·복습·자료 정비를 분리합니다. EBS 빠른 완료는 기본 18분으로 기록되며 수정할 수 있습니다."
+        description="전체 기간의 학습·복습·자료 정비 기록입니다. 날짜로 필터링할 수 있으며, 취소한 기록은 표시하지 않습니다."
         action={
           <button
             className="primary-button"
