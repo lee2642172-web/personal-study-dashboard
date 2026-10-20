@@ -1,3 +1,4 @@
+import { includeCustomsLawIntro } from "./catalogs/customsLawIntro.ts";
 import { includeDomesticConsumptionTax } from "./catalogs/domesticConsumptionTax.ts";
 import { includeCustomsTradeEnglish } from "./catalogs/customsTradeEnglish.ts";
 import { removeCancelledDayReviews } from "./dayLearning.ts";
@@ -185,9 +186,11 @@ export const browserRepository: DashboardRepository = {
       throw new Error(
         "저장된 데이터 형식을 읽을 수 없습니다. 원본을 보존하며 저장을 중단했습니다.",
       );
-    return includeDomesticConsumptionTax(
-      includeCustomsTradeEnglish(
-        removeCancelledDayReviews(connectEbsGroup(data)),
+    return includeCustomsLawIntro(
+      includeDomesticConsumptionTax(
+        includeCustomsTradeEnglish(
+          removeCancelledDayReviews(connectEbsGroup(data)),
+        ),
       ),
     );
   },

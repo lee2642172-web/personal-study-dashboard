@@ -1,4 +1,8 @@
 import {
+  createCustomsLawIntro,
+  CUSTOMS_LAW_INTRO_ID,
+} from "../src/catalogs/customsLawIntro.ts";
+import {
   createDomesticConsumptionTax,
   DOMESTIC_CONSUMPTION_TAX_ID,
 } from "../src/catalogs/domesticConsumptionTax.ts";
@@ -38,7 +42,7 @@ test("provided EBS/Basic history has no invented actual dates or times", () => {
   assert.equal(
     d.materials.filter((m) => m.area === "customs" && m.kind === "lectures")
       .length,
-    2,
+    3,
   );
   assert.ok(!d.logs.some((l) => l.area !== "english"));
   assert.ok(validData(d));
@@ -462,4 +466,93 @@ test("adding domestic tax to an existing browser preserves other course edits an
     createDomesticConsumptionTax().lectures[0].title,
     "OT + 부가가치세 입문",
   );
+});
+
+test("customs law imports all 98 lecture numbers and parenthesized times without viewing history", () => {
+  const d = createInitialData(),
+    m = d.materials.find((m) => m.id === CUSTOMS_LAW_INTRO_ID);
+  assert.equal(m.title, "관세법개론");
+  assert.equal(m.total, 98);
+  assert.equal(m.area, "customs");
+  assert.equal(m.status, "보관 중");
+  assert.deepEqual(
+    m.lectures.map((l) => l.number),
+    Array.from({ length: 98 }, (_, i) => i + 1),
+  );
+  assert.deepEqual(
+    m.lectures.map((l) => l.duration),
+    [
+      13, 35, 42, 41, 29, 45, 48, 36, 33, 30, 32, 21, 56, 42, 54, 12, 29, 14,
+      33, 24, 15, 41, 25, 20, 27, 35, 19, 37, 27, 16, 23, 53, 24, 10, 33, 13,
+      40, 30, 13, 35, 40, 37, 28, 26, 36, 29, 32, 18, 28, 20, 17, 32, 10, 54,
+      49, 31, 35, 38, 12, 37, 34, 23, 28, 47, 35, 13, 48, 16, 13, 45, 11, 34,
+      15, 10, 25, 18, 38, 31, 18, 35, 16, 15, 17, 42, 33, 20, 20, 18, 29, 28,
+      13, 27, 34, 25, 31, 26, 17, 50,
+    ],
+  );
+  assert.equal(m.lectures[0].title, "OT");
+  assert.equal(m.lectures[1].title, "법 제1조 ~ 제2조 3호");
+  assert.equal(m.lectures[11].title, "관세평가 개요");
+  assert.equal(m.lectures[42].title, "제99조 ~ 제101조, 제118조");
+  assert.equal(m.lectures[64].title, "제177조 ~ 제182조 --");
+  assert.equal(m.lectures[76].title, "제229조 ~ 제 231조");
+  assert.equal(m.lectures[97].title, "제 320조 ~ 관세법 종강");
+  assert.equal(d.logs.filter((l) => l.materialId === m.id).length, 0);
+  assert.equal(progress(m, d.logs).count, 0);
+  const checked = recordLectureCompletion(d, m.id, 1, 1, "law-1", "2026-10-20");
+  assert.equal(checked.logs.at(-1).minutes, 13);
+  const edited = recordLectureCompletion(
+    d,
+    m.id,
+    1,
+    2,
+    "law-2",
+    "2026-10-20",
+    24,
+  );
+  assert.equal(edited.logs.at(-1).minutes, 24);
+  assert.ok(validData(d));
+});
+test("customs-law migration keeps prior English/tax course records and user changes", () => {
+  let old = createInitialData();
+  old.materials = old.materials.filter((m) => m.id !== CUSTOMS_LAW_INTRO_ID);
+  old.materials.find((m) => m.id === DOMESTIC_CONSUMPTION_TAX_ID).title =
+    "내 내국소비세법";
+  old = recordLectureCompletion(
+    old,
+    DOMESTIC_CONSUMPTION_TAX_ID,
+    1,
+    1,
+    "prior-tax",
+    "2026-10-20",
+    30,
+  );
+  old = recordLectureCompletion(
+    old,
+    CUSTOMS_TRADE_ENGLISH_ID,
+    1,
+    1,
+    "prior-trade",
+    "2026-10-18",
+  );
+  const entries = new Map([[STORAGE_KEY, JSON.stringify(old)]]);
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k) => entries.get(k) ?? null,
+      setItem: (k, v) => entries.set(k, v),
+    },
+  });
+  const loaded = browserRepository.load();
+  assert.deepEqual(loaded.materials.slice(0, -1), old.materials);
+  assert.deepEqual(loaded.logs, old.logs);
+  assert.deepEqual(loaded.goals, old.goals);
+  assert.deepEqual(loaded.tasks, old.tasks);
+  assert.equal(loaded.materials.at(-1).id, CUSTOMS_LAW_INTRO_ID);
+  loaded.materials.at(-1).lectures[0].duration = 15;
+  browserRepository.save(loaded);
+  assert.deepEqual(browserRepository.load(), loaded);
+  const copy = createCustomsLawIntro();
+  copy.lectures[0].duration = 100;
+  assert.equal(createCustomsLawIntro().lectures[0].duration, 13);
 });
