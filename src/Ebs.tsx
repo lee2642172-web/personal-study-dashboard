@@ -1,4 +1,5 @@
 import { localDate } from "./dates";
+import { learningTime } from "./studyTime";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -28,6 +29,7 @@ import {
   validDate,
   EBS_START,
   recordEbsLearning,
+  recordEbsToday,
   toggleEbsLearning,
   EBS_DEFAULT_MINUTES,
 } from "./ebs";
@@ -119,8 +121,20 @@ export function EbsPage() {
   const days = calendarDates(month);
   const eligible = courses.filter((m) => scheduled(m, date) && date <= asOf);
   const pending = eligible.filter(
-    (m) => !courseDay(m, data.logs, date, asOf).completed,
+    (m) =>
+      !courseEntries(m, data.logs, date).some(
+        (l) => l.completed && !l.voided && l.date === asOf,
+      ),
   );
+  const todayTime = learningTime(
+    data.logs.filter(
+      (l) => courses.some((c) => c.id === l.materialId) && l.item === date,
+    ),
+    "today",
+    asOf,
+    asOf,
+  );
+  const unknownToday = todayTime.study.filter((l) => l.minutes === null).length;
   function changeMonth(next: string) {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(next) || next < "2026-04") return;
     setMonth(next);
@@ -145,18 +159,12 @@ export function EbsPage() {
       date,
       learnedDate,
     ).completed;
-    const restoring = courseDay(
-      course,
-      data.logs,
-      date,
-      learnedDate,
-    ).entries.some((l) => l.voided);
     update((d) => toggleEbsLearning(d, course.id, date, learnedDate, id));
     setNotice(
-      `${course.title} · ${wasCompleted ? "완료 취소 · 기록은 보관되며 시간 집계에서 제외됩니다" : restoring ? "학습 완료 복원 · 기존 날짜와 시간을 유지합니다" : `학습 완료 · ${learnedDate} · 기본 18분 기록`}`,
+      `${course.title} · ${wasCompleted ? "완료 취소 · 기록은 보관되며 시간 집계에서 제외됩니다" : `학습 완료 · ${learnedDate} · 기본 18분 기록`}`,
     );
   }
-  function completeAll() {
+  function recordTodayAll() {
     const learnedDate = localDate();
     const ids = new Map(courses.map((course) => [course.id, newId()]));
     update((d) =>
@@ -164,7 +172,7 @@ export function EbsPage() {
         .filter((course) => scheduled(course, date))
         .reduce(
           (next, course) =>
-            recordEbsLearning(
+            recordEbsToday(
               next,
               course.id,
               date,
@@ -175,7 +183,7 @@ export function EbsPage() {
         ),
     );
     setNotice(
-      `${date} 발행 강좌 완료 · 실제 학습일 ${learnedDate} · 강좌당 기본 ${EBS_DEFAULT_MINUTES}분`,
+      `${date} 발행 강좌의 오늘 학습 기록 · 실제 학습일 ${learnedDate} · 강좌당 기본 ${EBS_DEFAULT_MINUTES}분`,
     );
   }
   return (
@@ -354,26 +362,48 @@ export function EbsPage() {
               {date > asOf
                 ? "발행 예정입니다. 미리 완료 처리할 수 없습니다."
                 : eligible.length
-                  ? `발행 일정 ${eligible.length}개 강좌 · 실제 청취일은 별도 입력`
+                  ? `발행 일정 ${eligible.length}개 강좌 · 학습 기록은 버튼을 누른 날로 저장`
                   : "기본 발행 일정이 없는 날입니다."}
             </p>
+          </div>
+          <div
+            className="ebs-today-summary"
+            aria-label="선택한 회차의 오늘 청취시간"
+          >
+            <span>오늘 {asOf.replaceAll("-", ".")} · 이 회차 청취</span>
+            <strong>
+              {todayTime.study.length && !todayTime.hasStudyTime
+                ? "시간 미입력"
+                : `${todayTime.studyMinutes}분`}
+            </strong>
+            <small>
+              {unknownToday
+                ? `시간 미입력 ${unknownToday}건은 합계에서 제외됩니다.`
+                : "기존 완료 상태와 오늘의 학습 기록은 별도로 확인합니다."}
+            </small>
           </div>
           <button
             className={`primary-button ebs-batch-button ${!pending.length && eligible.length > 0 ? "all-complete" : ""}`}
             disabled={!pending.length}
-            onClick={completeAll}
+            onClick={recordTodayAll}
           >
             {!pending.length && eligible.length > 0 && <Check size={17} />}
             {pending.length
-              ? `미기록 ${pending.length}개 강좌 일괄 완료`
+              ? `오늘 미기록 ${pending.length}개 강좌 학습 기록 · +${pending.length * EBS_DEFAULT_MINUTES}분`
               : eligible.length
-                ? "모든 강좌에 완료 기록이 있어요"
-                : "일괄 완료할 발행 강좌 없음"}
+                ? "모든 강좌의 오늘 학습 기록이 있어요"
+                : "오늘 기록할 발행 강좌 없음"}
           </button>
           {courses.map((course) => {
             const day = courseDay(course, data.logs, date, asOf);
             const available = day.scheduled || day.entries.length > 0;
-            const latestDate = day.entries
+            const activeEntries = day.entries.filter((l) => !l.voided);
+            const todayEntries = activeEntries.filter((l) => l.date === asOf);
+            const todayMinutes = todayEntries.reduce(
+              (sum, l) => sum + (l.minutes ?? 0),
+              0,
+            );
+            const latestDate = activeEntries
               .filter((l) => l.date)
               .map((l) => l.date!)
               .sort()
@@ -408,9 +438,16 @@ export function EbsPage() {
                     {day.completed && (
                       <p>
                         최근 실제 청취일 {latestDate ?? "미입력"} · 청취 기록{" "}
-                        {day.entries.length}건
+                        {activeEntries.length}건
                       </p>
                     )}
+                    <p className="ebs-course-today">
+                      {todayEntries.length
+                        ? todayEntries.every((l) => l.minutes === null)
+                          ? "오늘 청취시간 미입력"
+                          : `오늘 청취 ${todayMinutes}분${todayEntries.some((l) => l.minutes === null) ? " · 시간 미입력 기록 있음" : ""}`
+                        : "오늘 청취 기록 없음"}
+                    </p>
                     {!day.scheduled && (
                       <p className="micro-note">
                         기본 발행 요일 외의 기존 기록을 보존해 표시합니다.
@@ -425,7 +462,7 @@ export function EbsPage() {
                         aria-pressed={day.completed}
                         title={
                           day.completed
-                            ? "다시 누르면 완료 취소 · 기록과 날짜·시간은 보관됩니다"
+                            ? "다시 누르면 완료 취소 · 기록은 시간 집계에서 제외됩니다"
                             : "기본 18분으로 학습 기록 생성"
                         }
                         disabled={day.future}
@@ -440,16 +477,14 @@ export function EbsPage() {
                       <small className="ebs-quick-hint">
                         {day.completed
                           ? "다시 누르면 완료 취소 · 기록은 보관됩니다"
-                          : day.entries.some((l) => l.voided)
-                            ? "다시 누르면 기존 날짜·시간으로 복원됩니다"
-                            : `버튼을 누른 날 · 기본 ${EBS_DEFAULT_MINUTES}분`}
+                          : `버튼을 누른 날 · 기본 ${EBS_DEFAULT_MINUTES}분`}
                       </small>
                       {day.completed && (
                         <div className="ebs-secondary-actions">
                           <button
                             className="text-button"
                             title="최근 기록의 날짜와 시간 수정"
-                            onClick={() => setLog(day.entries.at(-1)!)}
+                            onClick={() => setLog(activeEntries.at(-1)!)}
                           >
                             <Pencil size={13} />
                             기록 수정
@@ -472,8 +507,10 @@ export function EbsPage() {
                     </div>
                     {day.completed && (
                       <details className="ebs-history">
-                        <summary>청취 이력 {day.entries.length}건 보기</summary>
-                        {day.entries.map((entry) => (
+                        <summary>
+                          청취 이력 {activeEntries.length}건 보기
+                        </summary>
+                        {activeEntries.map((entry) => (
                           <div key={entry.id}>
                             <p>
                               {entry.voided

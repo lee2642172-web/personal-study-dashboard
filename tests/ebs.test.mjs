@@ -6,6 +6,7 @@ import { createInitialData } from "../src/initialData.ts";
 import { browserRepository, STORAGE_KEY } from "../src/storage.ts";
 import {
   recordEbsLearning,
+  recordEbsToday,
   toggleEbsLearning,
   EBS_GROUP_ID,
   connectEbsGroup,
@@ -320,7 +321,7 @@ test("quick completion roundtrips through local storage with both date fields in
   assert.deepEqual(browserRepository.load(), data);
 });
 
-test("completion toggle cancels and restores the same records with matching monthly progress and time", () => {
+test("completion toggle cancels prior sessions and re-completion creates one new session on the click date", () => {
   const original = createInitialData();
   const on = toggleEbsLearning(
     original,
@@ -374,12 +375,19 @@ test("completion toggle cancels and restores the same records with matching mont
     "2026-10-19",
     "toggle-restore",
   );
-  assert.equal(restored.logs.length, off.logs.length);
-  assert.equal(learningTime(restored.logs).studyMinutes, 54);
+  assert.equal(restored.logs.length, off.logs.length + 1);
+  assert.equal(learningTime(restored.logs).studyMinutes, 36);
+  assert.equal(
+    learningTime(restored.logs, "today", "2026-10-19", "2026-10-19")
+      .studyMinutes,
+    18,
+  );
+  assert.equal(restored.logs.at(-1).id, "toggle-restore");
+  assert.equal(restored.logs.at(-1).date, "2026-10-19");
   assert.ok(
     restored.logs
       .filter((l) => ["toggle-on", "toggle-review"].includes(l.id))
-      .every((l) => l.completed && !l.voided && l.date === "2026-10-18"),
+      .every((l) => !l.completed && l.voided && l.date === "2026-10-18"),
   );
   assert.deepEqual(restored.logs.slice(0, original.logs.length), original.logs);
 });
@@ -422,10 +430,13 @@ test("toggle cancellation gives zero recorded time and persists across reload wi
   const log = restored.logs.find((l) => l.id === "edited-toggle");
   assert.equal(log.minutes, 27);
   assert.equal(log.date, "2026-10-17");
-  assert.equal(log.completed, true);
-  assert.equal(learningTime(restored.logs).studyMinutes, 27);
+  assert.equal(log.completed, false);
+  assert.equal(log.voided, true);
+  assert.equal(restored.logs.at(-1).date, "2026-10-18");
+  assert.equal(restored.logs.at(-1).minutes, 18);
+  assert.equal(learningTime(restored.logs).studyMinutes, 18);
 });
-test("toggling an existing unknown-time history does not invent a date or default 18 minutes on restore", () => {
+test("re-completion of unknown-time history creates a dated 18-minute session without backfilling old logs", () => {
   const d = createInitialData();
   const off = toggleEbsLearning(
     d,
@@ -441,6 +452,103 @@ test("toggling an existing unknown-time history does not invent a date or defaul
     "2026-10-18",
     "unused-restore",
   );
-  assert.equal(restored.logs.length, d.logs.length);
-  assert.ok(restored.logs.every((l) => l.date === null && l.minutes === null));
+  assert.equal(restored.logs.length, d.logs.length + 1);
+  assert.ok(
+    restored.logs
+      .slice(0, d.logs.length)
+      .every((l) => l.date === null && l.minutes === null),
+  );
+  assert.equal(restored.logs.at(-1).date, "2026-10-18");
+  assert.equal(restored.logs.at(-1).minutes, 18);
+});
+
+test("three courses completed today total 54 minutes even when two were previously cancelled on another date", () => {
+  const date = "2026-10-20",
+    content = "2026-04-08";
+  const original = createInitialData();
+  let d = original;
+  for (const id of ["ebs-0", "ebs-1"]) {
+    d = recordEbsLearning(d, id, content, "2026-10-18", `old-${id}`);
+    d = toggleEbsLearning(d, id, content, "2026-10-18", `off-${id}`);
+  }
+  const cancelled = structuredClone(d.logs);
+  for (const id of ["ebs-0", "ebs-1", "ebs-2"])
+    d = toggleEbsLearning(d, id, content, date, `today-${id}`);
+  assert.equal(learningTime(d.logs, "today", date, date).studyMinutes, 54);
+  assert.equal(learningTime(d.logs, "today", date, date).measured.length, 3);
+  assert.deepEqual(d.logs.slice(0, cancelled.length), cancelled);
+  assert.deepEqual(
+    d.logs.slice(-3).map((l) => [l.date, l.minutes, l.contentDate]),
+    Array(3).fill([date, 18, content]),
+  );
+});
+test("explicit today batch fills missing courses: historical Start/Easy plus today's Power gives 18 then 54", () => {
+  let d = createInitialData();
+  const date = "2026-10-20",
+    content = "2026-04-08";
+  for (const id of ["ebs-0", "ebs-1"])
+    d = recordEbsLearning(d, id, content, "2026-10-18", `history-${id}`);
+  d = recordEbsLearning(d, "ebs-2", content, date, "today-power");
+  const before = structuredClone(d.logs);
+  assert.equal(learningTime(d.logs, "today", date, date).studyMinutes, 18);
+  for (const id of ["ebs-0", "ebs-1", "ebs-2"])
+    d = recordEbsToday(d, id, content, date, `today-${id}`);
+  assert.equal(learningTime(d.logs, "today", date, date).studyMinutes, 54);
+  assert.deepEqual(d.logs.slice(0, before.length), before);
+  assert.equal(d.logs.length, before.length + 2);
+  assert.equal(d.logs.at(-1).activity, "review");
+  for (const id of ["ebs-0", "ebs-1", "ebs-2"])
+    assert.equal(recordEbsToday(d, id, content, date, `duplicate-${id}`), d);
+  assert.equal(
+    monthStats(ebsCourses(d.materials), d.logs, "2026-04", date).done,
+    19,
+  );
+  browserRepository.save(d);
+  assert.deepEqual(browserRepository.load(), d);
+});
+test("today recording is explicit, preserves unknown historical times, and follows future/weekend schedules", () => {
+  const original = createInitialData(),
+    date = "2026-10-20";
+  let d = original;
+  for (const id of ["ebs-0", "ebs-1", "ebs-2"])
+    d = recordEbsToday(d, id, "2026-04-07", date, `today-${id}`);
+  assert.deepEqual(d.logs.slice(0, original.logs.length), original.logs);
+  assert.equal(learningTime(d.logs, "today", date, date).studyMinutes, 54);
+  assert.equal(
+    monthStats(ebsCourses(d.materials), d.logs, "2026-04", date).done,
+    16,
+  );
+  assert.equal(recordEbsToday(d, "ebs-0", "2026-10-21", date, "future"), d);
+  assert.equal(recordEbsToday(d, "ebs-0", "2026-10-18", date, "sunday"), d);
+  assert.equal(
+    recordEbsToday(d, "ebs-0", "2026-10-17", date, "saturday-start"),
+    d,
+  );
+  const saturday = recordEbsToday(
+    d,
+    "ebs-2",
+    "2026-10-17",
+    date,
+    "saturday-power",
+  );
+  assert.equal(saturday.logs.length, d.logs.length + 1);
+});
+test("today batch does not replace customized or deliberately unmeasured records with default time", () => {
+  let d = recordEbsLearning(
+    createInitialData(),
+    "ebs-0",
+    "2026-04-08",
+    "2026-10-20",
+    "custom",
+  );
+  d.logs = d.logs.map((l) => (l.id === "custom" ? { ...l, minutes: 27 } : l));
+  assert.equal(
+    recordEbsToday(d, "ebs-0", "2026-04-08", "2026-10-20", "default"),
+    d,
+  );
+  d.logs = d.logs.map((l) => (l.id === "custom" ? { ...l, minutes: null } : l));
+  assert.equal(
+    recordEbsToday(d, "ebs-0", "2026-04-08", "2026-10-20", "unknown"),
+    d,
+  );
 });

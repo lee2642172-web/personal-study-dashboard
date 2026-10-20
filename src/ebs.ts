@@ -159,15 +159,6 @@ export function recordEbsLearning(
   if (!day.scheduled && !day.entries.length) return data;
   if (!replay && day.completed) return data;
   if (replay && !day.completed) return data;
-  if (!replay && day.entries.some((l) => l.voided)) {
-    const ids = new Set(day.entries.filter((l) => l.voided).map((l) => l.id));
-    return {
-      ...data,
-      logs: data.logs.map((l) =>
-        ids.has(l.id) ? { ...l, completed: true, voided: false } : l,
-      ),
-    };
-  }
 
   const round =
     day.entries.reduce((highest, l) => Math.max(highest, l.round), 0) + 1;
@@ -219,4 +210,30 @@ export function toggleEbsLearning(
       ids.has(l.id) ? { ...l, completed: false, voided: true } : l,
     ),
   };
+}
+
+/** Today is a separate listening session, even if this publication was completed before. */
+export function recordEbsToday(
+  data: DashboardData,
+  courseId: string,
+  contentDate: string,
+  learnedDate: string,
+  id: string,
+): DashboardData {
+  const course = ebsCourses(data.materials).find((m) => m.id === courseId);
+  if (!course || !scheduled(course, contentDate) || contentDate > learnedDate)
+    return data;
+  const day = courseDay(course, data.logs, contentDate, learnedDate);
+  if (
+    day.entries.some((l) => l.completed && !l.voided && l.date === learnedDate)
+  )
+    return data;
+  return recordEbsLearning(
+    data,
+    courseId,
+    contentDate,
+    learnedDate,
+    id,
+    day.completed,
+  );
 }
