@@ -157,11 +157,16 @@ export function progress(material: Material, logs: StudyLog[], round = 1) {
           l.completed &&
           !l.voided &&
           l.round === round &&
-          (material.kind !== "days" || Number.isInteger(Number(l.item))) &&
+          (!["days", "lectures"].includes(material.kind) ||
+            Number.isInteger(Number(l.item))) &&
           Number(l.item) >= 1 &&
           Number(l.item) <= (material.total ?? 0),
       )
-      .map((l) => (material.kind === "days" ? String(Number(l.item)) : l.item)),
+      .map((l) =>
+        ["days", "lectures"].includes(material.kind)
+          ? String(Number(l.item))
+          : l.item,
+      ),
   ).size;
   return {
     count,

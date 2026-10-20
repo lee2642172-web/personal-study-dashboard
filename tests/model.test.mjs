@@ -1,4 +1,10 @@
 import {
+  lectureCompleted,
+  nextLecture,
+  recordLectureCompletion,
+  cancelLectureCompletion,
+} from "../src/lectureLearning.ts";
+import {
   createCustomsTradeEnglish,
   includeCustomsTradeEnglish,
   CUSTOMS_TRADE_ENGLISH_ID,
@@ -206,4 +212,109 @@ test("lecture metadata validates unique numbers, text and positive course durati
   const a = createCustomsTradeEnglish();
   a.lectures[0].title = "edited";
   assert.notEqual(createCustomsTradeEnglish().lectures[0].title, "edited");
+});
+
+test("quick lecture check saves the actual click date without inferring duration or duplicating completion", () => {
+  const original = createInitialData(),
+    id = CUSTOMS_TRADE_ENGLISH_ID;
+  const on = recordLectureCompletion(
+    original,
+    id,
+    1,
+    1,
+    "quick-1",
+    "2026-10-20",
+  );
+  assert.equal(on.logs.at(-1).minutes, null);
+  assert.equal(on.logs.at(-1).date, "2026-10-20");
+  assert.equal(
+    progress(
+      on.materials.find((m) => m.id === id),
+      on.logs,
+    ).count,
+    1,
+  );
+  assert.equal(learningTime(on.logs).hasStudyTime, false);
+  assert.equal(lectureCompleted(on.logs, id, 1, 1), true);
+  assert.equal(
+    nextLecture(
+      on.materials.find((m) => m.id === id),
+      on.logs,
+      1,
+    ),
+    2,
+  );
+  assert.equal(
+    recordLectureCompletion(on, id, 1, 1, "double", "2026-10-20", 56),
+    on,
+  );
+  assert.deepEqual(cancelLectureCompletion(on, id, 1, 1).logs, original.logs);
+  assert.deepEqual(on.logs.slice(0, -1), original.logs);
+});
+test("unchecking a lecture deletes only completed sessions in that round and updates actual time", () => {
+  const id = CUSTOMS_TRADE_ENGLISH_ID;
+  let d = recordLectureCompletion(
+    createInitialData(),
+    id,
+    1,
+    1,
+    "one",
+    "2026-10-20",
+    10,
+  );
+  d = recordLectureCompletion(d, id, 1, 2, "two", "2026-10-20", 3);
+  d = recordLectureCompletion(d, id, 2, 1, "round-two", "2026-10-20", 11);
+  d.logs.push({
+    ...d.logs.find((l) => l.id === "one"),
+    id: "partial",
+    minutes: 7,
+    completed: false,
+  });
+  const off = cancelLectureCompletion(d, id, 1, 1);
+  assert.ok(!off.logs.some((l) => l.id === "one"));
+  assert.ok(off.logs.some((l) => l.id === "partial"));
+  assert.equal(lectureCompleted(off.logs, id, 2, 1), true);
+  assert.equal(lectureCompleted(off.logs, id, 1, 2), true);
+  assert.equal(learningTime(off.logs).studyMinutes, 21);
+  assert.equal(cancelLectureCompletion(off, id, 1, 1), off);
+});
+test("lecture checks reject invalid ranges and dates and allow additional rounds", () => {
+  const d = createInitialData(),
+    id = CUSTOMS_TRADE_ENGLISH_ID;
+  for (const [round, number, date, minutes] of [
+    [0, 1, "2026-10-20", null],
+    [1, 61, "2026-10-20", null],
+    [1, 1.5, "2026-10-20", null],
+    [1, 1, "2026-02-30", null],
+    [1, 1, "2026-10-20", -1],
+  ]) {
+    assert.equal(
+      recordLectureCompletion(d, id, round, number, "bad", date, minutes),
+      d,
+    );
+  }
+  assert.equal(
+    recordLectureCompletion(d, "basic", 1, 1, "not-lecture", "2026-10-20"),
+    d,
+  );
+  const later = recordLectureCompletion(
+    d,
+    id,
+    100,
+    60,
+    "r100",
+    "2026-10-20",
+    82,
+  );
+  assert.equal(lectureCompleted(later.logs, id, 100, 60), true);
+  assert.equal(later.logs.at(-1).activity, "review");
+  assert.equal(
+    nextLecture(
+      later.materials.find((m) => m.id === id),
+      later.logs,
+      100,
+    ),
+    1,
+  );
+  assert.ok(validData(later));
 });

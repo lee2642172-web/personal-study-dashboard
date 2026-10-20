@@ -3520,3 +3520,112 @@ footer > span:first-child {
 .record-controls:has(input[aria-label="강의 검색"]) {
   flex-wrap: wrap;
 }
+.lecture-quick-panel {
+  border: 1px solid #dfe7f4;
+  border-radius: 16px;
+  padding: 24px 28px;
+  background: white;
+  margin-bottom: 22px;
+}
+.lecture-quick-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.lecture-quick-heading h2 {
+  font-size: 17px;
+  color: #657c9d;
+  margin-top: 7px;
+}
+.lecture-quick-heading label {
+  width: 100px;
+  color: #8d9fb8;
+  font-size: 11px;
+}
+.lecture-quick-focus {
+  text-align: center;
+  margin: 20px auto;
+  max-width: 600px;
+}
+.lecture-quick-focus h3 {
+  font-size: 26px;
+  color: #7690b6;
+  margin: 8px 0;
+}
+.lecture-quick-focus h3 strong {
+  font-size: 48px;
+  color: #5376b3;
+}
+.lecture-quick-title {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #768aa9;
+  overflow-wrap: anywhere;
+}
+.lecture-quick-time {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 12px;
+  margin: 16px auto;
+}
+.lecture-quick-time label {
+  font-size: 11px;
+  color: #8f9fb5;
+  text-align: left;
+  max-width: 200px;
+}
+.lecture-quick-time button {
+  min-height: 44px;
+}
+.lecture-check-button {
+  width: min(100%, 400px);
+  min-height: 48px;
+  justify-content: center;
+  margin: 0 auto 6px;
+}
+.lecture-check-button.is-complete {
+  background: #e7f3eb;
+  color: #548269;
+  border-color: #d0e6d8;
+}
+.lecture-quick-navigation {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+.lecture-quick-navigation label {
+  color: #8b9fb9;
+  font-size: 11px;
+  min-width: 0;
+}
+.lecture-quick-navigation select,
+.lecture-quick-navigation button {
+  min-height: 44px;
+}
+.lecture-quick-notice {
+  font-size: 11px;
+  color: #96a6bc;
+  text-align: center;
+  line-height: 1.9;
+  margin: 14px 0 18px;
+}
+@media (max-width: 650px) {
+  .lecture-quick-panel {
+    padding: 20px 16px;
+  }
+  .lecture-quick-navigation {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .lecture-quick-navigation label {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .lecture-quick-navigation button {
+    justify-content: center;
+    font-size: 11px;
+  }
+}

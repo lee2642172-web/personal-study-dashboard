@@ -1,3 +1,4 @@
+import { LectureQuickCheck } from "./LectureQuickCheck";
 import { TodayLearning } from "./TodayLearning";
 import { DayBook } from "./DayBook";
 import { isDayBook, getDayBook, dayRoundTotal } from "./dayLearning";
@@ -711,6 +712,18 @@ export function MaterialPage() {
           </button>
         }
       />
+      {m.kind === "lectures" && (
+        <LectureQuickCheck
+          key={m.id}
+          material={m}
+          round={round}
+          onRoundChange={(next) => {
+            setRound(next);
+            setPage(0);
+          }}
+          onEdit={setLog}
+        />
+      )}
       <div className="v1-material-info">
         <div className="v1-card-line">
           <label>
