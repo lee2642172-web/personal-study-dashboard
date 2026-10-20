@@ -1,5 +1,6 @@
 import { LectureQuickCheck } from "./LectureQuickCheck";
 import { TodayLearning } from "./TodayLearning";
+import { EbsReviewPanel } from "./EbsReview";
 import { DayBook } from "./DayBook";
 import { isDayBook, getDayBook, dayRoundTotal } from "./dayLearning";
 import { localDate, type TimePeriod } from "./dates";
@@ -281,6 +282,7 @@ export function Home() {
   return (
     <>
       <TodayLearning />
+      <EbsReviewPanel compact />
       <div className="v1-notice">
         <Target size={20} />
         <div>

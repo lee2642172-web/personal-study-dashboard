@@ -61,6 +61,8 @@ export type StudyLog = {
   materialId: string;
   /** EBS publication date; legacy records retain the same value in item. */
   contentDate?: string;
+  /** EBS next-day review: ID of the actual listening record being reviewed. */
+  reviewOf?: string;
   item: string;
   round: number;
   date: string | null;

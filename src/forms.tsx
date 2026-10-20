@@ -1,4 +1,5 @@
 import { lectureMinutes } from "./lectureLearning";
+import { nextEbsReviewDate } from "./ebsReview";
 import { isDayBook, saveDayAwareLog } from "./dayLearning";
 import { localDate } from "./dates";
 import { isEbsCourse, scheduled, validDate } from "./ebs";
@@ -244,7 +245,8 @@ export function LogForm({
       : value;
   });
   const [error, setError] = useState("");
-  const fixedMaterial = lockMaterial || !!value.initialLearning;
+  const fixedMaterial =
+    lockMaterial || !!value.initialLearning || !!value.reviewOf;
   const patch = (p: Partial<StudyLog>) => {
     const next = { ...log, ...p };
     if (
@@ -300,6 +302,16 @@ export function LogForm({
       if (log.date && (log.date < log.item || log.date > localDate())) {
         setError("실제 청취일은 콘텐츠 발행일부터 오늘 사이로 입력해 주세요.");
         return;
+      }
+      if (log.reviewOf && log.date) {
+        const source = data.logs.find((entry) => entry.id === log.reviewOf);
+        const due = source?.date ? nextEbsReviewDate(source.date) : "";
+        if (due && log.date < due) {
+          setError(
+            `다음 날 복습일은 원래 학습일의 다음 날(${due})부터 입력할 수 있습니다.`,
+          );
+          return;
+        }
       }
     }
     const nextLog = {
@@ -507,7 +519,9 @@ export function LogForm({
           />{" "}
           {m && isDayBook(m) && log.activity !== "system"
             ? `학습 완료 (해제 후 저장하면 ${log.initialLearning ? "신규 학습" : "복습"} 기록 삭제)`
-            : "학습 완료 (해제해도 기록과 시간은 유지)"}
+            : m && isEbsCourse(m)
+              ? "학습 완료 (해제하면 완료 취소 · 시간 집계 제외)"
+              : "학습 완료 (해제해도 기록과 시간은 유지)"}
         </label>
         <label>
           활동 메모

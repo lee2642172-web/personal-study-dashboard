@@ -7,7 +7,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/model.test.mjs tests/ebs.test.mjs tests/dayLearning.test.mjs"
+    "test": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "repository": {
     "type": "git",

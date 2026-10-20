@@ -121,6 +121,8 @@ export function validData(v: unknown): v is DashboardData {
         (l.initialLearning === undefined ||
           typeof l.initialLearning === "boolean") &&
         (l.voided === undefined || typeof l.voided === "boolean") &&
+        (l.reviewOf === undefined ||
+          (typeof l.reviewOf === "string" && l.reviewOf.length > 0)) &&
         (l.contentDate === undefined ||
           (typeof l.contentDate === "string" && l.contentDate === l.item)) &&
         strings(l, [

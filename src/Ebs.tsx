@@ -1,4 +1,6 @@
 import { localDate } from "./dates";
+import { useLocalDate } from "./useLocalDate";
+import { EbsReviewPanel } from "./EbsReview";
 import { learningTime } from "./studyTime";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -59,10 +61,11 @@ function Rate({
 }
 export function EbsCard() {
   const { data } = useData();
+  const today = useLocalDate();
   const courses = ebsCourses(data.materials);
   if (!courses.length) return null;
-  const month = defaultEbsDate(courses, data.logs, localDate()).slice(0, 7);
-  const stats = monthStats(courses, data.logs, month, localDate());
+  const month = defaultEbsDate(courses, data.logs, today).slice(0, 7);
+  const stats = monthStats(courses, data.logs, month, today);
   return (
     <Link to="/english/ebs" className="ebs-group-card blue">
       <div className="ebs-group-header">
@@ -103,7 +106,7 @@ export function EbsCard() {
 export function EbsPage() {
   const { data, update } = useData();
   const courses = ebsCourses(data.materials);
-  const asOf = localDate();
+  const asOf = useLocalDate();
   const [date, setDate] = useState(() =>
     defaultEbsDate(courses, data.logs, asOf),
   );
@@ -197,6 +200,7 @@ export function EbsPage() {
         title="EBS 오디오어학당"
         description="출근길의 세 강좌, 하루의 작은 기록. 콘텐츠 발행일을 선택해 청취 이력을 관리하세요."
       />
+      <EbsReviewPanel />
       <div className="ebs-month-summary">
         <div>
           <span className="eyebrow">MONTHLY OVERVIEW</span>

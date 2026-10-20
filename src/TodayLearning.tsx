@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useLocalDate } from "./useLocalDate";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, Clock3 } from "lucide-react";
 import { useData } from "./state";
-import { localDate } from "./dates";
 import { learningTime } from "./studyTime";
 import { fieldName, type Material, type StudyLog } from "./model";
 import { isEbsCourse } from "./ebs";
@@ -27,18 +26,7 @@ function itemLabel(log: StudyLog, material?: Material): string {
 
 export function TodayLearning() {
   const { data } = useData();
-  const [date, setDate] = useState(localDate);
-  useEffect(() => {
-    const refresh = () => setDate(localDate());
-    const timer = window.setInterval(refresh, 60_000);
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
-    };
-  }, []);
+  const date = useLocalDate();
   const today = learningTime(data.logs, "today", date, date);
   const entries = [...today.study].reverse();
   const unknown = entries.filter((log) => log.minutes === null).length;
