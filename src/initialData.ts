@@ -1,3 +1,4 @@
+import { createCostManagementAccounting } from "./catalogs/costManagementAccounting.ts";
 import { createCustomsLawIntro } from "./catalogs/customsLawIntro.ts";
 import { createDomesticConsumptionTax } from "./catalogs/domesticConsumptionTax.ts";
 import { createCustomsTradeEnglish } from "./catalogs/customsTradeEnglish.ts";
@@ -83,6 +84,7 @@ export function createInitialData(): DashboardData {
     createCustomsTradeEnglish(),
     createDomesticConsumptionTax(),
     createCustomsLawIntro(),
+    createCostManagementAccounting(),
     material("reverse-grammar", "거꾸로 읽는 영문법", {
       kind: "book",
       note: "일반 도서 · 독서용 자료. 전체 페이지 수 입력 후 페이지별 진도 기록 가능.",

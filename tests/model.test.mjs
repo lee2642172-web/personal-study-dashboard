@@ -1,4 +1,8 @@
 import {
+  createCostManagementAccounting,
+  COST_MANAGEMENT_ACCOUNTING_ID,
+} from "../src/catalogs/costManagementAccounting.ts";
+import {
   createCustomsLawIntro,
   CUSTOMS_LAW_INTRO_ID,
 } from "../src/catalogs/customsLawIntro.ts";
@@ -42,7 +46,7 @@ test("provided EBS/Basic history has no invented actual dates or times", () => {
   assert.equal(
     d.materials.filter((m) => m.area === "customs" && m.kind === "lectures")
       .length,
-    3,
+    4,
   );
   assert.ok(!d.logs.some((l) => l.area !== "english"));
   assert.ok(validData(d));
@@ -555,4 +559,89 @@ test("customs-law migration keeps prior English/tax course records and user chan
   const copy = createCustomsLawIntro();
   copy.lectures[0].duration = 100;
   assert.equal(createCustomsLawIntro().lectures[0].duration, 13);
+});
+
+test("cost management accounting has all 33 supplied lecture titles and durations with no progress inferred", () => {
+  const d = createInitialData(),
+    m = d.materials.find((m) => m.id === COST_MANAGEMENT_ACCOUNTING_ID);
+  assert.equal(m.title, "원가관리회계");
+  assert.equal(m.area, "customs");
+  assert.equal(m.total, 33);
+  assert.equal(m.status, "보관 중");
+  assert.deepEqual(
+    m.lectures.map((l) => l.number),
+    Array.from({ length: 33 }, (_, i) => i + 1),
+  );
+  assert.deepEqual(
+    m.lectures.map((l) => l.duration),
+    [
+      31, 43, 41, 31, 47, 42, 18, 42, 37, 46, 31, 45, 42, 37, 16, 36, 25, 43,
+      24, 31, 27, 59, 45, 41, 45, 28, 38, 31, 42, 51, 49, 42, 29,
+    ],
+  );
+  assert.equal(m.lectures[0].title, "OT");
+  assert.equal(m.lectures[6].title, "개별원가계산 객관식 문제(p855~858)");
+  assert.equal(m.lectures[22].title, "원가함수추청 객관식 문제 (p999~1014)");
+  assert.equal(
+    m.lectures[32].title,
+    "전략적 원가관리 (p1173~1191) *완강입니다.",
+  );
+  assert.equal(d.logs.filter((l) => l.materialId === m.id).length, 0);
+  assert.equal(progress(m, d.logs).count, 0);
+  const checked = recordLectureCompletion(
+    d,
+    m.id,
+    1,
+    1,
+    "cost-1",
+    "2026-10-20",
+  );
+  assert.equal(checked.logs.at(-1).minutes, 31);
+  const edited = recordLectureCompletion(
+    d,
+    m.id,
+    1,
+    22,
+    "cost-22",
+    "2026-10-20",
+    25,
+  );
+  assert.equal(edited.logs.at(-1).minutes, 25);
+  assert.ok(validData(d));
+});
+test("cost accounting catalog migration preserves prior subjects, records and later edits", () => {
+  let old = createInitialData();
+  old.materials = old.materials.filter(
+    (m) => m.id !== COST_MANAGEMENT_ACCOUNTING_ID,
+  );
+  old.materials.find((m) => m.id === CUSTOMS_LAW_INTRO_ID).title =
+    "내 관세법개론";
+  old = recordLectureCompletion(
+    old,
+    CUSTOMS_LAW_INTRO_ID,
+    1,
+    1,
+    "prior-law",
+    "2026-10-20",
+  );
+  const entries = new Map([[STORAGE_KEY, JSON.stringify(old)]]);
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k) => entries.get(k) ?? null,
+      setItem: (k, v) => entries.set(k, v),
+    },
+  });
+  const loaded = browserRepository.load();
+  assert.deepEqual(loaded.materials.slice(0, -1), old.materials);
+  assert.deepEqual(loaded.logs, old.logs);
+  assert.deepEqual(loaded.tasks, old.tasks);
+  assert.deepEqual(loaded.goals, old.goals);
+  assert.equal(loaded.materials.at(-1).id, COST_MANAGEMENT_ACCOUNTING_ID);
+  loaded.materials.at(-1).lectures[0].duration = 30;
+  browserRepository.save(loaded);
+  assert.deepEqual(browserRepository.load(), loaded);
+  const copy = createCostManagementAccounting();
+  copy.lectures[0].title = "수정";
+  assert.equal(createCostManagementAccounting().lectures[0].title, "OT");
 });
