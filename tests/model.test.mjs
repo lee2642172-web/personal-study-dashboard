@@ -214,7 +214,7 @@ test("lecture metadata validates unique numbers, text and positive course durati
   assert.notEqual(createCustomsTradeEnglish().lectures[0].title, "edited");
 });
 
-test("quick lecture check saves the actual click date without inferring duration or duplicating completion", () => {
+test("quick lecture check defaults to course duration on the click date without duplicating completion", () => {
   const original = createInitialData(),
     id = CUSTOMS_TRADE_ENGLISH_ID;
   const on = recordLectureCompletion(
@@ -225,7 +225,7 @@ test("quick lecture check saves the actual click date without inferring duration
     "quick-1",
     "2026-10-20",
   );
-  assert.equal(on.logs.at(-1).minutes, null);
+  assert.equal(on.logs.at(-1).minutes, 56);
   assert.equal(on.logs.at(-1).date, "2026-10-20");
   assert.equal(
     progress(
@@ -234,7 +234,8 @@ test("quick lecture check saves the actual click date without inferring duration
     ).count,
     1,
   );
-  assert.equal(learningTime(on.logs).hasStudyTime, false);
+  assert.equal(learningTime(on.logs).hasStudyTime, true);
+  assert.equal(learningTime(on.logs).studyMinutes, 56);
   assert.equal(lectureCompleted(on.logs, id, 1, 1), true);
   assert.equal(
     nextLecture(
@@ -317,4 +318,53 @@ test("lecture checks reject invalid ranges and dates and allow additional rounds
     1,
   );
   assert.ok(validData(later));
+});
+
+test("lecture completion defaults to each course length while explicit edits and zero override it", () => {
+  const original = createInitialData(),
+    id = CUSTOMS_TRADE_ENGLISH_ID;
+  const standard = recordLectureCompletion(
+    original,
+    id,
+    1,
+    16,
+    "default16",
+    "2026-10-20",
+  );
+  assert.equal(standard.logs.at(-1).minutes, 53);
+  const edited = recordLectureCompletion(
+    original,
+    id,
+    1,
+    16,
+    "edited16",
+    "2026-10-20",
+    22,
+  );
+  assert.equal(edited.logs.at(-1).minutes, 22);
+  const zero = recordLectureCompletion(
+    original,
+    id,
+    1,
+    16,
+    "zero16",
+    "2026-10-20",
+    0,
+  );
+  assert.equal(zero.logs.at(-1).minutes, 0);
+  assert.deepEqual(
+    cancelLectureCompletion(standard, id, 1, 16).logs,
+    original.logs,
+  );
+  const nullDefault = recordLectureCompletion(
+    original,
+    id,
+    1,
+    2,
+    "null-default",
+    "2026-10-20",
+    null,
+  );
+  assert.equal(nullDefault.logs.at(-1).minutes, 65);
+  assert.deepEqual(standard.logs.slice(0, -1), original.logs);
 });

@@ -771,7 +771,7 @@ export function MaterialPage() {
                 {m.lectures
                   .reduce((sum, lesson) => sum + lesson.duration, 0)
                   .toLocaleString()}
-                분 · 실제 학습시간과 별도
+                분 · 강의 자료의 전체 분량
               </span>
               <span>
                 {round}회독 완료 {p.count} / {m.total}강
@@ -862,7 +862,7 @@ export function MaterialPage() {
           {m.kind === "audio"
             ? "발행 요일 기반 목록입니다. 휴방 등 실제 편성은 별도 확인해 주세요. 회차 발행일과 실제 청취일은 서로 다릅니다."
             : m.kind === "lectures"
-              ? "강의 길이는 실제 학습시간에 합산하지 않습니다. 수강 후 기록에서 실제 날짜·시간과 완료 여부를 입력하세요."
+              ? "수강 완료 시 강의 시간이 기본 학습시간으로 기록됩니다. 실제 수강한 시간에 맞게 수정할 수 있습니다."
               : "완료한 Unit / Day / 페이지를 선택해 날짜와 시간을 입력하세요. 회독 번호는 목표 횟수를 초과할 수 있습니다."}
         </p>
         <div className="item-list">

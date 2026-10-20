@@ -6,6 +6,7 @@ import { localDate } from "./dates";
 import { Progress } from "./ui";
 import {
   lectureCompleted,
+  lectureMinutes,
   nextLecture,
   recordLectureCompletion,
   cancelLectureCompletion,
@@ -42,25 +43,30 @@ export function LectureQuickCheck({
         l.completed &&
         !l.voided,
     );
+  const lecture = m.lectures?.find((l) => l.number === number);
+  const defaultMinutes = lectureMinutes(m, number);
   useLayoutEffect(
     () =>
       setMinutes(
-        latest?.minutes === undefined || latest.minutes === null
-          ? ""
-          : String(latest.minutes),
+        latest
+          ? latest.minutes === null
+            ? ""
+            : String(latest.minutes)
+          : defaultMinutes === null
+            ? ""
+            : String(defaultMinutes),
       ),
-    [number, round, m.id, latest?.id, latest?.minutes],
+    [number, round, m.id, latest?.id, latest?.minutes, defaultMinutes],
   );
   if (!m.total) return null;
-  const lecture = m.lectures?.find((l) => l.number === number);
   function toggle() {
     if (complete) {
       update((d) => cancelLectureCompletion(d, m.id, round, number));
       setNotice(`제 ${number}강 완료 기록을 취소했습니다.`);
       return;
     }
-    const time = minutes.trim() === "" ? null : Number(minutes);
-    if (time !== null && (!Number.isFinite(time) || time < 0)) {
+    const time = minutes.trim() === "" ? defaultMinutes : Number(minutes);
+    if (time === null || !Number.isFinite(time) || time < 0) {
       setNotice("학습시간은 0 이상의 숫자로 입력해 주세요.");
       return;
     }
@@ -70,7 +76,7 @@ export function LectureQuickCheck({
       recordLectureCompletion(d, m.id, round, number, id, date, time),
     );
     setNotice(
-      `제 ${number}강 수강 완료 · ${date}${time === null ? " · 시간 미입력" : ` · ${time}분`}`,
+      `제 ${number}강 수강 완료 · ${date} · ${time}분`,
     );
   }
   return (
@@ -111,13 +117,17 @@ export function LectureQuickCheck({
         )}
         <div className="lecture-quick-time">
           <label>
-            실제 학습시간 (분, 선택)
+            학습시간 (분, 수정 가능)
             <input
               aria-label="빠른 체크 학습시간"
               type="number"
               min="0"
               step="0.5"
-              placeholder="미측정 시 비우기"
+              placeholder={
+                defaultMinutes === null
+                  ? "학습시간 입력"
+                  : `기본 ${defaultMinutes}분`
+              }
               disabled={complete}
               value={minutes}
               onChange={(e) => setMinutes(e.target.value)}
@@ -128,7 +138,7 @@ export function LectureQuickCheck({
               className="text-button"
               onClick={() => setMinutes(String(lecture.duration))}
             >
-              {lecture.duration}분 사용
+              {lecture.duration}분으로 초기화
             </button>
           )}
         </div>
@@ -182,7 +192,7 @@ export function LectureQuickCheck({
       </div>
       <p className="lecture-quick-notice" role="status">
         {notice ||
-          "오늘 날짜로 체크합니다. 시간은 선택 입력하며, 완료 후 강의가 자동 이동하지 않습니다."}
+          "오늘 날짜와 강의 시간으로 기록합니다. 학습시간은 수정할 수 있으며, 완료 후 강의는 자동 이동하지 않습니다."}
       </p>
       <Progress
         done={progress(m, data.logs, round).count}

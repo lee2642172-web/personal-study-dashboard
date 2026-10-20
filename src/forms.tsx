@@ -1,3 +1,4 @@
+import { lectureMinutes } from "./lectureLearning";
 import { isDayBook, saveDayAwareLog } from "./dayLearning";
 import { localDate } from "./dates";
 import { isEbsCourse, scheduled, validDate } from "./ebs";
@@ -184,7 +185,7 @@ export function MaterialForm({
         <p className="form-help">
           설정·상태 변경은 기존 기록을 삭제하지 않습니다. 전체량을 줄여도 이전
           기록은 학습 기록 화면에 남습니다. 자료 등록은 할 일을 자동 생성하지
-          않습니다. 예상 시간은 실제 학습시간에 합산하지 않습니다.
+          않습니다. 자료 등록만으로 학습시간을 추가하지 않습니다.
         </p>
         <button className="primary-button" type="submit">
           자료 저장
@@ -228,10 +229,38 @@ export function LogForm({
   lockMaterial?: boolean;
 }) {
   const { data, update } = useData();
-  const [log, setLog] = useState(value);
+  const isNew = !data.logs.some((entry) => entry.id === value.id);
+  const [log, setLog] = useState(() => {
+    const material = data.materials.find((m) => m.id === value.materialId);
+    return isNew &&
+      material?.kind === "lectures" &&
+      value.item &&
+      value.activity !== "system"
+      ? {
+          ...value,
+          minutes:
+            value.minutes ?? lectureMinutes(material, Number(value.item)),
+        }
+      : value;
+  });
   const [error, setError] = useState("");
   const fixedMaterial = lockMaterial || !!value.initialLearning;
-  const patch = (p: Partial<StudyLog>) => setLog({ ...log, ...p });
+  const patch = (p: Partial<StudyLog>) => {
+    const next = { ...log, ...p };
+    if (
+      isNew &&
+      (p.item !== undefined || p.materialId !== undefined) &&
+      p.minutes === undefined &&
+      next.activity !== "system"
+    ) {
+      const material = data.materials.find((m) => m.id === next.materialId);
+      if (material?.kind === "lectures")
+        next.minutes = next.item
+          ? lectureMinutes(material, Number(next.item))
+          : null;
+    }
+    setLog(next);
+  };
   const m = data.materials.find((m) => m.id === log.materialId);
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -275,6 +304,14 @@ export function LogForm({
     }
     const nextLog = {
       ...log,
+      minutes:
+        isNew &&
+        m?.kind === "lectures" &&
+        log.completed &&
+        log.activity !== "system" &&
+        log.item
+          ? (log.minutes ?? lectureMinutes(m, Number(log.item)))
+          : log.minutes,
       contentDate:
         m && isEbsCourse(m) && validDate(log.item) ? log.item : undefined,
     };
@@ -392,7 +429,7 @@ export function LogForm({
             {" · "}강의 길이{" "}
             {m.lectures?.find((lesson) => lesson.number === Number(log.item))
               ?.duration ?? "미입력"}
-            분 · 실제 학습시간은 아래에 별도로 입력하세요.
+            분 · 학습시간은 아래에서 수정할 수 있습니다.
           </p>
         )}
         <div className="form-grid">
@@ -412,7 +449,9 @@ export function LogForm({
             />
           </label>
           <label>
-            실제 활동시간 (분, 미측정 시 비우기)
+            {m?.kind === "lectures"
+              ? "학습시간 (분, 수정 가능)"
+              : "실제 활동시간 (분, 미측정 시 비우기)"}
             <input
               type="number"
               min="0"

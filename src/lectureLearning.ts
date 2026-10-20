@@ -25,7 +25,16 @@ export function nextLecture(
     if (!lectureCompleted(logs, material.id, round, n)) return n;
   return material.total ?? 1;
 }
-/** Explicit quick check: date is supplied at click time; nominal length is never inferred. */
+export function lectureMinutes(
+  material: Material,
+  number: number,
+): number | null {
+  return (
+    material.lectures?.find((l) => l.number === number)?.duration ??
+    material.duration
+  );
+}
+/** Completion uses course length by default; explicit corrections (including zero) take precedence. */
 export function recordLectureCompletion(
   data: DashboardData,
   id: string,
@@ -59,7 +68,7 @@ export function recordLectureCompletion(
     item: String(number),
     round,
     date,
-    minutes,
+    minutes: minutes ?? lectureMinutes(material, number),
     activity: round === 1 ? "study" : "review",
     note: "",
     topic: "",
