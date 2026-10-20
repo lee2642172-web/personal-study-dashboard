@@ -1,3 +1,4 @@
+import { createDomesticConsumptionTax } from "./catalogs/domesticConsumptionTax.ts";
 import { createCustomsTradeEnglish } from "./catalogs/customsTradeEnglish.ts";
 import {
   type DashboardData,
@@ -79,6 +80,7 @@ export function createInitialData(): DashboardData {
       note: "go, get, take 등 기초동사 중심. 과거 약 4개월 수강 및 1회 학습(세부 날짜·시간 미입력). 2026년 11월 토요반 재수강 고려.",
     }),
     createCustomsTradeEnglish(),
+    createDomesticConsumptionTax(),
     material("reverse-grammar", "거꾸로 읽는 영문법", {
       kind: "book",
       note: "일반 도서 · 독서용 자료. 전체 페이지 수 입력 후 페이지별 진도 기록 가능.",

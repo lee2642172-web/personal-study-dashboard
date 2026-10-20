@@ -1,4 +1,8 @@
 import {
+  createDomesticConsumptionTax,
+  DOMESTIC_CONSUMPTION_TAX_ID,
+} from "../src/catalogs/domesticConsumptionTax.ts";
+import {
   lectureCompleted,
   nextLecture,
   recordLectureCompletion,
@@ -34,7 +38,7 @@ test("provided EBS/Basic history has no invented actual dates or times", () => {
   assert.equal(
     d.materials.filter((m) => m.area === "customs" && m.kind === "lectures")
       .length,
-    1,
+    2,
   );
   assert.ok(!d.logs.some((l) => l.area !== "english"));
   assert.ok(validData(d));
@@ -367,4 +371,95 @@ test("lecture completion defaults to each course length while explicit edits and
   );
   assert.equal(nullDefault.logs.at(-1).minutes, 65);
   assert.deepEqual(standard.logs.slice(0, -1), original.logs);
+});
+
+test("domestic consumption tax imports 38 lectures in original order with only parenthesized lengths", () => {
+  const d = createInitialData(),
+    m = d.materials.find((m) => m.id === DOMESTIC_CONSUMPTION_TAX_ID);
+  assert.equal(m.title, "내국소비세법");
+  assert.equal(m.area, "customs");
+  assert.equal(m.total, 38);
+  assert.equal(m.status, "보관 중");
+  assert.deepEqual(
+    m.lectures.map((l) => l.number),
+    Array.from({ length: 38 }, (_, i) => i + 1),
+  );
+  assert.deepEqual(
+    m.lectures.map((l) => l.duration),
+    [
+      38, 61, 47, 40, 48, 46, 51, 48, 35, 41, 18, 53, 64, 30, 52, 48, 52, 39,
+      58, 45, 42, 58, 54, 53, 35, 52, 39, 49, 68, 62, 44, 59, 58, 49, 66, 36,
+      24, 59,
+    ],
+  );
+  assert.equal(m.lectures[0].title, "OT + 부가가치세 입문");
+  assert.equal(m.lectures[31].title, "Ch.4 거래징수 (p.120)");
+  assert.equal(m.lectures[32].title, "[PART2] 개별소비세법 Ch.1 개관 (p.274)");
+  assert.equal(m.lectures[36].title, "[PART3] 주세법 Ch.1 총칙 (p.356)");
+  assert.equal(
+    m.lectures[37].title,
+    "Ch.2 주세의 부과, 징수 (p.365) * 완강입니다.",
+  );
+  assert.equal(d.logs.filter((l) => l.materialId === m.id).length, 0);
+  assert.equal(progress(m, d.logs).count, 0);
+  const checked = recordLectureCompletion(
+    d,
+    m.id,
+    1,
+    1,
+    "tax-one",
+    "2026-10-20",
+  );
+  assert.equal(checked.logs.at(-1).minutes, 38);
+  const edited = recordLectureCompletion(
+    d,
+    m.id,
+    1,
+    2,
+    "tax-two",
+    "2026-10-20",
+    25,
+  );
+  assert.equal(edited.logs.at(-1).minutes, 25);
+  assert.ok(validData(d));
+});
+test("adding domestic tax to an existing browser preserves other course edits and history", () => {
+  const old = createInitialData();
+  old.materials = old.materials.filter(
+    (m) => m.id !== DOMESTIC_CONSUMPTION_TAX_ID,
+  );
+  old.materials.find((m) => m.id === CUSTOMS_TRADE_ENGLISH_ID).title =
+    "내 무역영어 강의";
+  const before = recordLectureCompletion(
+    old,
+    CUSTOMS_TRADE_ENGLISH_ID,
+    1,
+    1,
+    "prior-english",
+    "2026-10-18",
+    48,
+  );
+  const entries = new Map([[STORAGE_KEY, JSON.stringify(before)]]);
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k) => entries.get(k) ?? null,
+      setItem: (k, v) => entries.set(k, v),
+    },
+  });
+  const loaded = browserRepository.load();
+  assert.deepEqual(loaded.materials.slice(0, -1), before.materials);
+  assert.deepEqual(loaded.logs, before.logs);
+  assert.deepEqual(loaded.goals, before.goals);
+  assert.deepEqual(loaded.tasks, before.tasks);
+  assert.equal(loaded.materials.at(-1).id, DOMESTIC_CONSUMPTION_TAX_ID);
+  loaded.materials.at(-1).title = "내 세법 강의";
+  browserRepository.save(loaded);
+  assert.deepEqual(browserRepository.load(), loaded);
+  const a = createDomesticConsumptionTax();
+  a.lectures[0].title = "수정";
+  assert.equal(
+    createDomesticConsumptionTax().lectures[0].title,
+    "OT + 부가가치세 입문",
+  );
 });
