@@ -47,7 +47,11 @@ export function TodayLearning() {
             <Clock3 size={15} />총 학습시간
           </span>
           <strong>
-            {today.hasStudyTime ? `${today.studyMinutes}분` : "미기록"}
+            {today.hasStudyTime
+              ? `${today.studyMinutes}분`
+              : entries.length
+                ? "시간 미입력"
+                : "미기록"}
           </strong>
         </div>
       </header>

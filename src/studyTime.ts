@@ -8,6 +8,7 @@ export function learningTime(
 ) {
   const hasStudyTime = logs.some(
     (l) =>
+      !l.voided &&
       l.activity !== "system" &&
       l.minutes !== null &&
       matchesActualDate(l.date, period, reference, selected),

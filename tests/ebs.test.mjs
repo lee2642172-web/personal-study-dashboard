@@ -407,7 +407,7 @@ test("toggle cancellation gives zero recorded time and persists across reload wi
   };
   const off = toggleEbsLearning(d, "ebs-0", "2026-04-08", "2026-10-18", "off");
   const time = learningTime(off.logs);
-  assert.equal(time.hasStudyTime, true);
+  assert.equal(time.hasStudyTime, false);
   assert.equal(time.studyMinutes, 0);
   const entries = new Map();
   Object.defineProperty(globalThis, "localStorage", {

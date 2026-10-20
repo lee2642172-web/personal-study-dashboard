@@ -5,7 +5,7 @@ import { useData } from "./state";
 import { useLocalDate } from "./useLocalDate";
 import { localDate } from "./dates";
 import { newId, type StudyLog } from "./model";
-import { EBS_DEFAULT_MINUTES, ebsCourses } from "./ebs";
+import { ebsCourses } from "./ebs";
 import {
   ebsReviews,
   recordEbsReview,
@@ -91,11 +91,11 @@ export function EbsReviewPanel({ compact = false }: { compact?: boolean }) {
                       recordEbsReview(d, review.sourceIds[0], date, id),
                     );
                     setNotice(
-                      `${review.course.title} · ${dotted(date)} 복습 완료 · ${EBS_DEFAULT_MINUTES}분 기록`,
+                      `${review.course.title} · ${dotted(date)} 복습 완료 · 시간은 필요할 때 입력하세요.`,
                     );
                   }}
                 >
-                  복습 완료하기 <span>+{EBS_DEFAULT_MINUTES}분</span>
+                  복습 완료하기
                 </button>
               </div>
             </li>
@@ -134,7 +134,7 @@ export function EbsReviewPanel({ compact = false }: { compact?: boolean }) {
                         className="text-link"
                         onClick={() => setEditing(log)}
                       >
-                        기록 수정
+                        {log.minutes === null ? "시간 입력" : "기록 수정"}
                       </button>
                       {log.reviewOf && (
                         <button
@@ -174,8 +174,8 @@ export function EbsReviewPanel({ compact = false }: { compact?: boolean }) {
         )}
       </details>
       <p className="micro-note">
-        복습도 기본 18분 · 날짜와 시간은 완료 후 수정 가능 · 이 복습을 완료해도
-        다음 날 복습을 다시 만들지 않습니다.
+        복습시간은 선택 입력입니다. 미입력도 복습 완료로 저장되며, 시간 합계에는
+        포함되지 않습니다.
       </p>
       <p className="ebs-review-notice" role="status" aria-live="polite">
         {notice}

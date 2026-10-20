@@ -86,7 +86,7 @@ export function ebsReviews(data: DashboardData, asOf: string): EbsReview[] {
   );
 }
 
-/** One tap adds a separate 18-minute review on the actual local review date. */
+/** One tap records completion; actual review time stays unknown until entered. */
 export function recordEbsReview(
   data: DashboardData,
   sourceId: string,
@@ -109,7 +109,7 @@ export function recordEbsReview(
   return {
     ...next,
     logs: next.logs.map((l) =>
-      l.id === id ? { ...l, reviewOf: sourceId } : l,
+      l.id === id ? { ...l, reviewOf: sourceId, minutes: null } : l,
     ),
   };
 }

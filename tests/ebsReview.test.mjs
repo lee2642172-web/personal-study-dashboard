@@ -51,7 +51,7 @@ test("reminders use actual listening dates, never publication dates or undated i
   assert.deepEqual(ebsReviews(d, "bad"), []);
   assert.deepEqual(d, before); // Merely displaying a reminder never saves a study log.
 });
-test("three next-day course reviews save separate 18-minute records and HOME totals 54 minutes", () => {
+test("three next-day reviews record completion without estimating time; original lessons retain 54 minutes", () => {
   let d = createInitialData();
   for (const course of ebsCourses(d.materials))
     d = recordEbsLearning(
@@ -86,7 +86,7 @@ test("three next-day course reviews save separate 18-minute records and HOME tot
       .slice(-3)
       .every(
         (l) =>
-          l.minutes === 18 &&
+          l.minutes === null &&
           l.activity === "review" &&
           l.date === "2026-10-21" &&
           l.contentDate === "2026-04-08" &&
@@ -95,7 +95,7 @@ test("three next-day course reviews save separate 18-minute records and HOME tot
   );
   assert.equal(
     learningTime(d.logs, "today", "2026-10-21", "2026-10-21").studyMinutes,
-    54,
+    0,
   );
   assert.equal(
     learningTime(d.logs, "today", "2026-10-20", "2026-10-20").studyMinutes,
@@ -131,6 +131,7 @@ test("early or invalid reviews cannot be recorded, including future sources and 
 test("cancelling a review removes its time, restores the reminder and leaves original listening intact", () => {
   const d = learned(),
     reviewed = recordEbsReview(d, "source", "2026-10-22", "review");
+  reviewed.logs.at(-1).minutes = 5;
   let cancelled = cancelEbsReview(reviewed, "review");
   assert.equal(pending(cancelled, "2026-10-22").length, 1);
   assert.equal(
@@ -153,7 +154,7 @@ test("cancelling a review removes its time, restores the reminder and leaves ori
   assert.equal(
     learningTime(cancelled.logs, "today", "2026-10-23", "2026-10-23")
       .studyMinutes,
-    18,
+    0,
   );
   const undone = toggleEbsLearning(
     cancelled,
@@ -267,4 +268,52 @@ test("review links, date/time edits and cancellation persist through browser rep
   const old = createInitialData();
   entries.set(STORAGE_KEY, JSON.stringify(old));
   assert.deepEqual(browserRepository.load(), old); // No backfilled dates/review logs.
+});
+
+test("optional review minutes distinguish unmeasured, zero and entered time without losing completion", () => {
+  let d = recordEbsReview(learned(), "source", "2026-10-21", "optional");
+  let time = learningTime(d.logs, "today", "2026-10-21", "2026-10-21");
+  assert.equal(time.hasStudyTime, false);
+  assert.equal(time.study.length, 1);
+  assert.equal(time.measured.length, 0);
+  assert.equal(ebsReviews(d, "2026-10-21")[0].completion.minutes, null);
+  d.logs.at(-1).minutes = 5;
+  time = learningTime(d.logs, "today", "2026-10-21", "2026-10-21");
+  assert.equal(time.studyMinutes, 5);
+  assert.equal(time.hasStudyTime, true);
+  d.logs.at(-1).minutes = 0;
+  assert.equal(
+    learningTime(d.logs, "today", "2026-10-21", "2026-10-21").hasStudyTime,
+    true,
+  );
+  d.logs.at(-1).minutes = null;
+  assert.equal(pending(d, "2026-10-21").length, 0);
+  // A cancelled old measured session must not make unmeasured reviews appear as zero-minute time.
+  d.logs.push({
+    ...d.logs.at(-1),
+    id: "old-default",
+    minutes: 18,
+    completed: false,
+    voided: true,
+  });
+  assert.equal(
+    learningTime(d.logs, "today", "2026-10-21", "2026-10-21").hasStudyTime,
+    false,
+  );
+  const entries = new Map();
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k) => entries.get(k) ?? null,
+      setItem: (k, v) => entries.set(k, v),
+    },
+  });
+  browserRepository.save(d);
+  assert.deepEqual(browserRepository.load(), d);
+  // Existing saved 18-minute records have no provenance for their time; never guess whether edited.
+  d.logs.at(-1).minutes = 18;
+  d.logs.at(-1).voided = false;
+  d.logs.at(-1).completed = true;
+  browserRepository.save(d);
+  assert.equal(browserRepository.load().logs.at(-1).minutes, 18);
 });
