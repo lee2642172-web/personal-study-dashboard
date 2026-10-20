@@ -92,6 +92,7 @@ export function MaterialForm({
               <option value="reference">참고 자료 / 항목</option>
               <option value="audio">요일별 오디오 회차</option>
               <option value="units">Unit</option>
+              <option value="lectures">강의</option>
               <option value="days">Day</option>
               <option value="book">페이지</option>
             </select>
@@ -358,7 +359,7 @@ export function LogForm({
                 <label>
                   {m.kind === "audio"
                     ? "회차 발행일 (학습일과 별도)"
-                    : "Unit / Day / 페이지 / 항목 번호"}
+                    : "Unit / Day / 강의 / 페이지 / 항목 번호"}
                   <input
                     type={m.kind === "audio" ? "date" : "number"}
                     min={m.kind === "audio" ? undefined : 1}
@@ -381,6 +382,18 @@ export function LogForm({
               </div>
             )}
           </>
+        )}
+        {m?.kind === "lectures" && log.item && (
+          <p className="form-help">
+            {
+              m.lectures?.find((lesson) => lesson.number === Number(log.item))
+                ?.title
+            }
+            {" · "}강의 길이{" "}
+            {m.lectures?.find((lesson) => lesson.number === Number(log.item))
+              ?.duration ?? "미입력"}
+            분 · 실제 학습시간은 아래에 별도로 입력하세요.
+          </p>
         )}
         <div className="form-grid">
           <label>

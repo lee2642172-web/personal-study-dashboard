@@ -1,3 +1,4 @@
+import { includeCustomsTradeEnglish } from "./catalogs/customsTradeEnglish.ts";
 import { removeCancelledDayReviews } from "./dayLearning.ts";
 import { connectEbsGroup } from "./ebs.ts";
 import { type DashboardData, fields, materialStatuses } from "./model.ts";
@@ -79,9 +80,24 @@ export function validData(v: unknown): v is DashboardData {
         object(m) &&
         strings(m, ["id", "title", "note", "routine", "startDate"]) &&
         area(m.area) &&
-        ["audio", "units", "days", "reference", "book"].includes(
+        ["audio", "units", "days", "reference", "book", "lectures"].includes(
           String(m.kind),
         ) &&
+        (m.lectures === undefined ||
+          (Array.isArray(m.lectures) &&
+            m.lectures.every(
+              (l) =>
+                object(l) &&
+                Number.isSafeInteger(l.number) &&
+                Number(l.number) > 0 &&
+                typeof l.title === "string" &&
+                typeof l.duration === "number" &&
+                Number.isFinite(l.duration) &&
+                l.duration > 0,
+            ) &&
+            new Set(
+              m.lectures.map((l) => (l as Record<string, unknown>).number),
+            ).size === m.lectures.length)) &&
         materialStatuses.includes(m.status as never) &&
         (m.groupId === undefined || typeof m.groupId === "string") &&
         positiveOrNull(m.total) &&
@@ -168,7 +184,9 @@ export const browserRepository: DashboardRepository = {
       throw new Error(
         "저장된 데이터 형식을 읽을 수 없습니다. 원본을 보존하며 저장을 중단했습니다.",
       );
-    return removeCancelledDayReviews(connectEbsGroup(data));
+    return includeCustomsTradeEnglish(
+      removeCancelledDayReviews(connectEbsGroup(data)),
+    );
   },
   save(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));

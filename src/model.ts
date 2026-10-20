@@ -32,12 +32,18 @@ export const materialStatuses: MaterialStatus[] = [
   "보류",
   "완료",
 ];
+export type Lecture = {
+  number: number;
+  title: string;
+  duration: number;
+};
 export type Material = {
   id: string;
   title: string;
   area: FieldId;
   groupId?: string;
-  kind: "audio" | "units" | "days" | "reference" | "book";
+  kind: "audio" | "units" | "days" | "reference" | "book" | "lectures";
+  lectures?: Lecture[];
   status: MaterialStatus;
   total: number | null;
   targetPasses: number | null;

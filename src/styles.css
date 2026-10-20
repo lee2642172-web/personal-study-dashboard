@@ -3505,3 +3505,18 @@ footer > span:first-child {
 .ebs-daily-course .ebs-course-today {
   color: #6787b5;
 }
+.lecture-row strong {
+  display: block;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.lecture-row .lecture-duration {
+  color: #7891b8;
+}
+.lecture-row > button {
+  flex-shrink: 0;
+  min-height: 44px;
+}
+.record-controls:has(input[aria-label="강의 검색"]) {
+  flex-wrap: wrap;
+}

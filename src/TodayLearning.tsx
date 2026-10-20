@@ -13,13 +13,15 @@ function itemLabel(log: StudyLog, material?: Material): string {
   if (material && isEbsCourse(material))
     return `발행일 ${(log.contentDate ?? log.item).replaceAll("-", ".")}`;
   const item =
-    material?.kind === "days"
-      ? `Day ${log.item}`
-      : material?.kind === "units"
-        ? `Unit ${log.item}`
-        : material?.kind === "book"
-          ? `${log.item}페이지`
-          : log.item;
+    material?.kind === "lectures"
+      ? `제 ${log.item}강`
+      : material?.kind === "days"
+        ? `Day ${log.item}`
+        : material?.kind === "units"
+          ? `Unit ${log.item}`
+          : material?.kind === "book"
+            ? `${log.item}페이지`
+            : log.item;
   return log.initialLearning ? item : `${item} · ${log.round}회독`;
 }
 

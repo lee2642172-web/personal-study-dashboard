@@ -64,7 +64,10 @@ function MaterialSummary({ material: m }: { material: Material }) {
       l.materialId === m.id && l.initialLearning && l.completed && !l.voided,
   ).length;
   const isTracked =
-    m.kind === "units" || m.kind === "days" || m.kind === "book";
+    m.kind === "units" ||
+    m.kind === "days" ||
+    m.kind === "book" ||
+    m.kind === "lectures";
   return (
     <Link className="v1-material-card blue" to={`/materials/${m.id}`}>
       <div className="v1-card-line">
@@ -80,7 +83,7 @@ function MaterialSummary({ material: m }: { material: Material }) {
         <Progress
           done={p.count}
           total={scope ?? m.total}
-          label={`${displayRound}회독 ${m.kind === "units" ? "Unit" : m.kind === "days" ? "Day" : "페이지"}`}
+          label={`${displayRound}회독 ${m.kind === "units" ? "Unit" : m.kind === "days" ? "Day" : m.kind === "lectures" ? "강" : "페이지"}`}
         />
       ) : (
         <p className="material-fact">
@@ -88,7 +91,9 @@ function MaterialSummary({ material: m }: { material: Material }) {
             ? p.entries.length
               ? `완료 청취 ${p.entries.filter((l) => l.completed).length}회 · 실제 날짜 별도`
               : "청취 기록 전 · 실제 날짜 별도"
-            : `${m.total ? `자료 규모 ${m.total} ${m.kind === "units" ? "Units" : m.kind === "days" ? "Days" : m.kind === "book" ? "페이지" : "개"} · ` : ""}${isDayBook(m) ? "복습" : "학습"} 진도 ${p.entries.length ? "기록 있음" : "미입력"}`}
+            : m.kind === "lectures"
+              ? `총 ${m.total ?? "미정"}강 · 전체 미수강`
+              : `${m.total ? `자료 규모 ${m.total} ${m.kind === "units" ? "Units" : m.kind === "days" ? "Days" : m.kind === "book" ? "페이지" : "개"} · ` : ""}${isDayBook(m) ? "복습" : "학습"} 진도 ${p.entries.length ? "기록 있음" : "미입력"}`}
         </p>
       )}
       {initialCount > 0 && (
@@ -659,6 +664,7 @@ export function MaterialPage() {
   const [round, setRound] = useState(1);
   const [month, setMonth] = useState("2026-04");
   const [page, setPage] = useState(0);
+  const [lectureSearch, setLectureSearch] = useState("");
   if (!material)
     return (
       <Empty>
@@ -669,7 +675,19 @@ export function MaterialPage() {
   if (isEbsCourse(m)) return <Navigate to="/english/ebs" replace />;
   if (isDayBook(m)) return <DayBook material={m} />;
   const p = progress(m, data.logs, round);
-  const items = m.kind === "audio" ? episodes(m, month) : unitItems(m);
+  const allItems = m.kind === "audio" ? episodes(m, month) : unitItems(m);
+  const query = lectureSearch.trim();
+  const items =
+    m.kind !== "lectures" || !query
+      ? allItems
+      : allItems.filter((item) =>
+          /^\d+$/.test(query)
+            ? Number(item) === Number(query)
+            : m.lectures
+                ?.find((lesson) => lesson.number === Number(item))
+                ?.title.toLowerCase()
+                .includes(query.toLowerCase()),
+        );
   const currentPage = Math.min(
     page,
     Math.max(0, Math.ceil(items.length / 20) - 1),
@@ -728,8 +746,24 @@ export function MaterialPage() {
                   ? " Days"
                   : m.kind === "book"
                     ? " 페이지"
-                    : "개"}
+                    : m.kind === "lectures"
+                      ? "강"
+                      : "개"}
             </span>
+          )}
+          {m.kind === "lectures" && m.lectures && (
+            <>
+              <span>
+                전체 강의 길이{" "}
+                {m.lectures
+                  .reduce((sum, lesson) => sum + lesson.duration, 0)
+                  .toLocaleString()}
+                분 · 실제 학습시간과 별도
+              </span>
+              <span>
+                {round}회독 완료 {p.count} / {m.total}강
+              </span>
+            </>
           )}
           {m.targetPasses && (
             <span>
@@ -744,8 +778,26 @@ export function MaterialPage() {
           )}
         </div>
       </div>
-      <Section title="회차별 학습 관리" tag="LEARNING RECORDS">
+      <Section
+        title={m.kind === "lectures" ? "강의 목록" : "회차별 학습 관리"}
+        tag="LEARNING RECORDS"
+      >
         <div className="record-controls">
+          {m.kind === "lectures" && (
+            <label>
+              강의 검색
+              <input
+                aria-label="강의 검색"
+                type="search"
+                placeholder="강의 번호 또는 제목"
+                value={lectureSearch}
+                onChange={(e) => {
+                  setLectureSearch(e.target.value);
+                  setPage(0);
+                }}
+              />
+            </label>
+          )}
           {m.kind === "audio" ? (
             <label>
               발행 월
@@ -790,39 +842,53 @@ export function MaterialPage() {
             <Progress
               done={p.count}
               total={m.total}
-              label={`${round}회독 완료 ${m.kind === "units" ? "Units" : m.kind === "days" ? "Days" : m.kind === "book" ? "페이지" : "항목"}`}
+              label={`${round}회독 완료 ${m.kind === "units" ? "Units" : m.kind === "days" ? "Days" : m.kind === "book" ? "페이지" : m.kind === "lectures" ? "강" : "항목"}`}
             />
           )}
         <p className="micro-note">
           {m.kind === "audio"
             ? "발행 요일 기반 목록입니다. 휴방 등 실제 편성은 별도 확인해 주세요. 회차 발행일과 실제 청취일은 서로 다릅니다."
-            : "완료한 Unit / Day / 페이지를 선택해 날짜와 시간을 입력하세요. 회독 번호는 목표 횟수를 초과할 수 있습니다."}
+            : m.kind === "lectures"
+              ? "강의 길이는 실제 학습시간에 합산하지 않습니다. 수강 후 기록에서 실제 날짜·시간과 완료 여부를 입력하세요."
+              : "완료한 Unit / Day / 페이지를 선택해 날짜와 시간을 입력하세요. 회독 번호는 목표 횟수를 초과할 수 있습니다."}
         </p>
         <div className="item-list">
           {list.map((item) => {
+            const lesson = m.lectures?.find(
+              (entry) => entry.number === Number(item),
+            );
             const records = p.entries.filter(
-              (l) => l.item === item && l.round === round,
+              (l) => l.item === item && l.round === round && !l.voided,
             );
             const latest = records.at(-1);
             const complete = records.some((l) => l.completed);
             const count = p.entries.filter(
-              (l) => l.item === item && l.completed,
+              (l) => l.item === item && l.completed && !l.voided,
             ).length;
             return (
               <div
-                className={`unit-row ${complete ? "is-complete" : ""}`}
+                className={`unit-row ${m.kind === "lectures" ? "lecture-row" : ""} ${complete ? "is-complete" : ""}`}
                 key={item}
               >
                 <div>
                   <strong>
-                    {m.kind === "audio"
-                      ? `${item} 회차`
-                      : `${m.kind === "units" ? "Unit" : m.kind === "days" ? "Day" : m.kind === "book" ? "페이지" : "항목"} ${item}`}
+                    {m.kind === "lectures"
+                      ? `제 ${item}강${lesson ? ` · ${lesson.title}` : ""}`
+                      : m.kind === "audio"
+                        ? `${item} 회차`
+                        : `${m.kind === "units" ? "Unit" : m.kind === "days" ? "Day" : m.kind === "book" ? "페이지" : "항목"} ${item}`}
                   </strong>
+                  {lesson && (
+                    <small className="lecture-duration">
+                      강의 길이 {lesson.duration}분
+                    </small>
+                  )}
                   <small>
                     {latest
                       ? `${complete ? "완료" : "진행 중"} · 실제 학습일 ${latest.date ?? "미입력"} · 누적 ${count}회 완료 기록`
-                      : "기록 전"}
+                      : m.kind === "lectures"
+                        ? "미수강"
+                        : "기록 전"}
                   </small>
                 </div>
                 <button
@@ -831,7 +897,11 @@ export function MaterialPage() {
                     setLog(latest ?? createLog(m.area, m.id, item, round))
                   }
                 >
-                  {latest ? "기록 확인 / 수정" : "완료 기록"}
+                  {latest
+                    ? "기록 확인 / 수정"
+                    : m.kind === "lectures"
+                      ? "학습 기록"
+                      : "완료 기록"}
                 </button>
                 {latest && (
                   <button
@@ -846,8 +916,9 @@ export function MaterialPage() {
           })}
           {!items.length && (
             <Empty>
-              전체량 또는 발행 시작일·요일을 자료 설정에 입력하면 항목별 관리가
-              가능합니다. 자유 학습 기록은 바로 추가할 수 있습니다.
+              {m.kind === "lectures" && query
+                ? "검색에 맞는 강의가 없습니다."
+                : "전체량 또는 발행 시작일·요일을 자료 설정에 입력하면 항목별 관리가 가능합니다. 자유 학습 기록은 바로 추가할 수 있습니다."}
             </Empty>
           )}
         </div>
@@ -874,7 +945,7 @@ export function MaterialPage() {
         )}
       </Section>
       <Section title="이 자료의 전체 기록" tag="ALL ROUNDS">
-        <LogList logs={p.entries} onEdit={setLog} />
+        <LogList logs={p.entries.filter((l) => !l.voided)} onEdit={setLog} />
       </Section>
       {editing && <MaterialForm value={m} onClose={() => setEditing(false)} />}
       {log && <LogForm value={log} onClose={() => setLog(null)} />}
@@ -921,9 +992,13 @@ export function LogList({
                       (m) => m.id === l.materialId && isEbsCourse(m),
                     )
                     ? `콘텐츠 발행일 ${l.contentDate ?? l.item} · `
-                    : l.initialLearning
-                      ? `Day ${l.item} · 신규 학습 · `
-                      : `${l.item} · ${l.round}회독 · `
+                    : data.materials.some(
+                          (m) => m.id === l.materialId && m.kind === "lectures",
+                        )
+                      ? `제 ${l.item}강 · ${l.round}회독 · `
+                      : l.initialLearning
+                        ? `Day ${l.item} · 신규 학습 · `
+                        : `${l.item} · ${l.round}회독 · `
                   : ""}
                 실제 학습일 {l.date || "미입력"} ·{" "}
                 {l.minutes === null ? "시간 미입력" : `${l.minutes}분`}
