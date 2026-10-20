@@ -75,9 +75,7 @@ export function LectureQuickCheck({
     update((d) =>
       recordLectureCompletion(d, m.id, round, number, id, date, time),
     );
-    setNotice(
-      `제 ${number}강 수강 완료 · ${date} · ${time}분`,
-    );
+    setNotice(`제 ${number}강 수강 완료 · ${date} · ${time}분`);
   }
   return (
     <section className="lecture-quick-panel" aria-label="빠른 수강 체크">
@@ -104,7 +102,9 @@ export function LectureQuickCheck({
       </div>
       <div className="lecture-quick-focus">
         <p className="eyebrow">
-          {round}회독 · 총 {m.total}강
+          {round}회독 ·{" "}
+          {m.lectureCatalogStatus === "ongoing" ? "현재 등록" : "총"} {m.total}
+          강
         </p>
         <h3>
           제 <strong>{number}</strong>강

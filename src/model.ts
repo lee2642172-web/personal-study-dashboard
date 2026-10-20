@@ -44,6 +44,8 @@ export type Material = {
   groupId?: string;
   kind: "audio" | "units" | "days" | "reference" | "book" | "lectures";
   lectures?: Lecture[];
+  /** Ongoing catalogs show the registered count rather than a final course total. */
+  lectureCatalogStatus?: "ongoing" | "complete";
   status: MaterialStatus;
   total: number | null;
   targetPasses: number | null;

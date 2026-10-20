@@ -93,9 +93,12 @@ function MaterialSummary({ material: m }: { material: Material }) {
               ? `완료 청취 ${p.entries.filter((l) => l.completed).length}회 · 실제 날짜 별도`
               : "청취 기록 전 · 실제 날짜 별도"
             : m.kind === "lectures"
-              ? `총 ${m.total ?? "미정"}강 · 전체 미수강`
+              ? `${m.lectureCatalogStatus === "ongoing" ? "현재 등록" : "총"} ${m.total ?? "미정"}강 · 전체 미수강`
               : `${m.total ? `자료 규모 ${m.total} ${m.kind === "units" ? "Units" : m.kind === "days" ? "Days" : m.kind === "book" ? "페이지" : "개"} · ` : ""}${isDayBook(m) ? "복습" : "학습"} 진도 ${p.entries.length ? "기록 있음" : "미입력"}`}
         </p>
+      )}
+      {m.lectureCatalogStatus === "ongoing" && (
+        <p className="micro-note">강의 추가 예정 · 현재 등록 강의 기준 진도</p>
       )}
       {initialCount > 0 && (
         <p className="micro-note">
@@ -752,7 +755,10 @@ export function MaterialPage() {
         <div className="material-meta">
           {m.total && (
             <span>
-              자료 전체량 {m.total.toLocaleString()}
+              {m.lectureCatalogStatus === "ongoing"
+                ? "현재 등록"
+                : "자료 전체량"}{" "}
+              {m.total.toLocaleString()}
               {m.kind === "units"
                 ? " Units"
                 : m.kind === "days"
@@ -767,11 +773,16 @@ export function MaterialPage() {
           {m.kind === "lectures" && m.lectures && (
             <>
               <span>
-                전체 강의 길이{" "}
+                {m.lectureCatalogStatus === "ongoing"
+                  ? "등록된 강의 길이"
+                  : "전체 강의 길이"}{" "}
                 {m.lectures
                   .reduce((sum, lesson) => sum + lesson.duration, 0)
                   .toLocaleString()}
-                분 · 강의 자료의 전체 분량
+                분 ·{" "}
+                {m.lectureCatalogStatus === "ongoing"
+                  ? "추후 강의 추가 예정"
+                  : "강의 자료의 전체 분량"}
               </span>
               <span>
                 {round}회독 완료 {p.count} / {m.total}강

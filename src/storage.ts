@@ -1,3 +1,4 @@
+import { includeFinancialAccounting } from "./catalogs/financialAccounting.ts";
 import { includeCostManagementAccounting } from "./catalogs/costManagementAccounting.ts";
 import { includeCustomsLawIntro } from "./catalogs/customsLawIntro.ts";
 import { includeDomesticConsumptionTax } from "./catalogs/domesticConsumptionTax.ts";
@@ -86,6 +87,8 @@ export function validData(v: unknown): v is DashboardData {
         ["audio", "units", "days", "reference", "book", "lectures"].includes(
           String(m.kind),
         ) &&
+        (m.lectureCatalogStatus === undefined ||
+          ["ongoing", "complete"].includes(String(m.lectureCatalogStatus))) &&
         (m.lectures === undefined ||
           (Array.isArray(m.lectures) &&
             m.lectures.every(
@@ -187,11 +190,13 @@ export const browserRepository: DashboardRepository = {
       throw new Error(
         "저장된 데이터 형식을 읽을 수 없습니다. 원본을 보존하며 저장을 중단했습니다.",
       );
-    return includeCostManagementAccounting(
-      includeCustomsLawIntro(
-        includeDomesticConsumptionTax(
-          includeCustomsTradeEnglish(
-            removeCancelledDayReviews(connectEbsGroup(data)),
+    return includeFinancialAccounting(
+      includeCostManagementAccounting(
+        includeCustomsLawIntro(
+          includeDomesticConsumptionTax(
+            includeCustomsTradeEnglish(
+              removeCancelledDayReviews(connectEbsGroup(data)),
+            ),
           ),
         ),
       ),

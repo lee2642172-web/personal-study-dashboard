@@ -1,4 +1,9 @@
 import {
+  createFinancialAccounting,
+  includeFinancialAccounting,
+  FINANCIAL_ACCOUNTING_ID,
+} from "../src/catalogs/financialAccounting.ts";
+import {
   createCostManagementAccounting,
   COST_MANAGEMENT_ACCOUNTING_ID,
 } from "../src/catalogs/costManagementAccounting.ts";
@@ -46,7 +51,7 @@ test("provided EBS/Basic history has no invented actual dates or times", () => {
   assert.equal(
     d.materials.filter((m) => m.area === "customs" && m.kind === "lectures")
       .length,
-    4,
+    5,
   );
   assert.ok(!d.logs.some((l) => l.area !== "english"));
   assert.ok(validData(d));
@@ -644,4 +649,114 @@ test("cost accounting catalog migration preserves prior subjects, records and la
   const copy = createCostManagementAccounting();
   copy.lectures[0].title = "수정";
   assert.equal(createCostManagementAccounting().lectures[0].title, "OT");
+});
+
+test("ongoing financial accounting uses provided lengths without importing playback history", () => {
+  const d = createInitialData();
+  const m = d.materials.find((m) => m.id === FINANCIAL_ACCOUNTING_ID);
+  assert.equal(m.title, "재무회계");
+  assert.equal(m.lectureCatalogStatus, "ongoing");
+  assert.equal(m.total, 114);
+  assert.equal(m.lectures.length, 114);
+  assert.deepEqual(
+    m.lectures.map((l) => l.number),
+    Array.from({ length: 114 }, (_, i) => i + 1),
+  );
+  assert.equal(m.lectures[0].title, "OT + 회계의 정의 (p20~21)");
+  assert.equal(m.lectures[0].duration, 40); // Ignore played 41 minutes.
+  assert.equal(m.lectures[4].duration, 43); // Ignore played 6 minutes.
+  assert.equal(m.lectures[95].duration, 30); // A playback date alone is not completion.
+  assert.equal(m.lectures[113].title, "현금흐름표정리 (p760~)");
+  assert.equal(m.lectures[113].duration, 45);
+  assert.equal(d.logs.filter((l) => l.materialId === m.id).length, 0);
+  assert.equal(progress(m, d.logs).count, 0);
+  const done = recordLectureCompletion(
+    d,
+    m.id,
+    1,
+    1,
+    "finance-one",
+    "2026-10-20",
+  );
+  assert.equal(done.logs.at(-1).minutes, 40);
+  assert.equal(done.logs.at(-1).date, "2026-10-20");
+  assert.ok(validData(done));
+  const invalid = structuredClone(d);
+  invalid.materials.find(
+    (m) => m.id === FINANCIAL_ACCOUNTING_ID,
+  ).lectureCatalogStatus = "unexpected";
+  assert.equal(validData(invalid), false);
+});
+test("financial accounting adds only missing lectures, preserving custom lessons and all study records", () => {
+  let d = createInitialData();
+  const m = d.materials.find((m) => m.id === FINANCIAL_ACCOUNTING_ID);
+  // Simulate an earlier course release containing only the first 100 lectures.
+  m.total = 100;
+  m.lectures = m.lectures.slice(0, 100);
+  m.title = "나의 재무회계";
+  m.status = "학습 중";
+  m.note = "사용자 메모";
+  m.lectures[0].duration = 25;
+  m.lectures[0].title = "수정한 제목";
+  d = recordLectureCompletion(
+    d,
+    m.id,
+    1,
+    1,
+    "finance-existing",
+    "2026-10-19",
+    25,
+  );
+  const before = structuredClone(d);
+  const loaded = includeFinancialAccounting(d);
+  const merged = loaded.materials.find((m) => m.id === FINANCIAL_ACCOUNTING_ID);
+  assert.equal(merged.total, 114);
+  assert.equal(merged.lectures.length, 114);
+  assert.deepEqual(
+    merged.lectures.slice(0, 100),
+    before.materials.find((m) => m.id === FINANCIAL_ACCOUNTING_ID).lectures,
+  );
+  assert.equal(merged.title, "나의 재무회계");
+  assert.equal(merged.note, "사용자 메모");
+  assert.equal(merged.status, "학습 중");
+  assert.deepEqual(loaded.logs, before.logs);
+  assert.deepEqual(loaded.goals, before.goals);
+  assert.deepEqual(loaded.tasks, before.tasks);
+  assert.deepEqual(d, before); // Migration does not mutate the input.
+  assert.equal(includeFinancialAccounting(loaded), loaded); // No duplicate on reload.
+  assert.equal(progress(merged, loaded.logs).count, 1);
+  assert.ok(validData(loaded));
+  // User-added future lectures and a larger configured count also survive.
+  merged.lectures = merged.lectures.filter((l) => l.number !== 114);
+  merged.lectures.push({
+    number: 115,
+    title: "사용자 추가 강의",
+    duration: 20,
+  });
+  merged.total = 120;
+  const extended = includeFinancialAccounting(loaded).materials.find(
+    (m) => m.id === FINANCIAL_ACCOUNTING_ID,
+  );
+  assert.equal(extended.total, 120);
+  assert.equal(extended.lectures.length, 115);
+  assert.equal(extended.lectures.at(-1).title, "사용자 추가 강의");
+  assert.equal(createFinancialAccounting().lectures[0].duration, 40);
+});
+test("existing browser storage gains financial accounting without changing prior data", () => {
+  const old = createInitialData();
+  old.materials = old.materials.filter((m) => m.id !== FINANCIAL_ACCOUNTING_ID);
+  const entries = new Map([[STORAGE_KEY, JSON.stringify(old)]]);
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k) => entries.get(k) ?? null,
+      setItem: (k, v) => entries.set(k, v),
+    },
+  });
+  const loaded = browserRepository.load();
+  assert.deepEqual(loaded.materials.slice(0, -1), old.materials);
+  assert.deepEqual(loaded.logs, old.logs);
+  assert.equal(loaded.materials.at(-1).id, FINANCIAL_ACCOUNTING_ID);
+  browserRepository.save(loaded);
+  assert.deepEqual(browserRepository.load(), loaded);
 });
