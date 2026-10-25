@@ -19,6 +19,7 @@ import {
   newId,
   progress,
   materialStatuses,
+  fieldName,
 } from "./model";
 import { DayLearningForm } from "./DayLearningForm";
 import { localDate } from "./dates";
@@ -62,9 +63,15 @@ export function DayBook({ material: m }: { material: Material }) {
           title={m.title}
           description="자료 전체 Day 수를 입력하면 이어서 학습을 시작할 수 있습니다."
         />
-        <button className="primary-button" onClick={() => setEditing(true)}>
-          자료 설정 수정
-        </button>
+        {m.vocabularyId ? (
+          <Link className="primary-button" to={`/vocabulary/${m.vocabularyId}`}>
+            실제 마지막 Day 확인 · 단어 편입 관리
+          </Link>
+        ) : (
+          <button className="primary-button" onClick={() => setEditing(true)}>
+            자료 설정 수정
+          </button>
+        )}
         {editing && (
           <MaterialForm value={m} onClose={() => setEditing(false)} />
         )}
@@ -77,7 +84,8 @@ export function DayBook({ material: m }: { material: Material }) {
     (l) =>
       l.materialId === m.id &&
       Number(l.item) === day &&
-      l.activity !== "system",
+      l.activity !== "system" &&
+      !l.voided,
   );
   const count = entries.filter(
     (l) => l.completed && !l.voided && !l.initialLearning,
@@ -94,6 +102,11 @@ export function DayBook({ material: m }: { material: Material }) {
   ).length;
   const complete =
     day <= scope && dayCompleted(data.logs, m.id, book.activeRound, day);
+  const vocabularyWords =
+    data.vocabularies
+      ?.find((b) => b.id === m.vocabularyId)
+      ?.entries.filter((e) => e.status === "imported" && e.day === day)
+      .sort((a, b) => a.position! - b.position!) ?? [];
   const last = [...data.logs]
     .reverse()
     .find(
@@ -128,12 +141,15 @@ export function DayBook({ material: m }: { material: Material }) {
   }
   return (
     <>
-      <Link to="/english" className="back-link">
+      <Link
+        to={m.area === "english" ? "/english" : `/fields/${m.area}`}
+        className="back-link"
+      >
         <ArrowLeft size={15} />
-        영어 학습으로
+        {fieldName(m.area)} 학습으로
       </Link>
       <PageHeading
-        eyebrow="ENGLISH · DAY REVIEW"
+        eyebrow={`${fieldName(m.area)} · DAY REVIEW`}
         title={m.title}
         description={`${m.total} Days · 회독을 선택하고 Day별 복습을 기록하세요.`}
         action={
@@ -163,13 +179,22 @@ export function DayBook({ material: m }: { material: Material }) {
             </select>
           </label>
           <div className="daybook-toolbar-actions">
-            <button
-              className="secondary-button"
-              disabled={m.total >= 10000}
-              onClick={() => setNewLearning("append")}
-            >
-              <Plus size={15} />새 Day 학습
-            </button>
+            {m.vocabularyId ? (
+              <Link
+                className="secondary-button"
+                to={`/vocabulary/${m.vocabularyId}`}
+              >
+                새 단어 편입 관리
+              </Link>
+            ) : (
+              <button
+                className="secondary-button"
+                disabled={m.total >= 10000}
+                onClick={() => setNewLearning("append")}
+              >
+                <Plus size={15} />새 Day 학습
+              </button>
+            )}
             <button
               className="secondary-button"
               onClick={() => {
@@ -322,6 +347,22 @@ export function DayBook({ material: m }: { material: Material }) {
           )}
         </details>
       </section>
+      {vocabularyWords.length > 0 && (
+        <details className="vocabulary-day-words">
+          <summary>
+            Day {day} 등록 단어 {vocabularyWords.length}개
+          </summary>
+          <ol>
+            {vocabularyWords.map((word) => (
+              <li key={word.id}>
+                <strong>{word.term}</strong>
+                <span>{word.meaning}</span>
+                {word.note && <small>{word.note}</small>}
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
       <details className="daybook-info">
         <summary>회독 현황 · 자료 설정</summary>
         <Progress

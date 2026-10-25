@@ -1,3 +1,4 @@
+import { VocabularySummary } from "./Vocabulary";
 import { LanguageTasks, TaskBoard } from "./Tasks";
 import {
   StudyTimeSummary,
@@ -388,7 +389,10 @@ export function FieldPage() {
   const [adding, setAdding] = useState(false);
   const field = fields.find((f) => f.id === id);
   if (!field) return <Empty>분야를 찾을 수 없습니다.</Empty>;
-  const materials = data.materials.filter((m) => m.area === id);
+  const vocabulary = data.vocabularies?.find((b) => b.area === id);
+  const materials = data.materials.filter(
+    (m) => m.area === id && m.id !== vocabulary?.materialId,
+  );
   const logs = data.logs.filter((l) => l.area === id);
   return (
     <>
@@ -406,18 +410,23 @@ export function FieldPage() {
       {field.category === "languages" && (
         <LanguageTasks key={field.id} area={field.id} />
       )}
-      <Section title="등록한 자료">
-        <div className="v1-three-grid">
-          {materials.length ? (
-            materials.map((m) => <MaterialSummary material={m} key={m.id} />)
-          ) : (
-            <Empty>
-              아직 등록된 자료가 없습니다. 임의의 학습 자료나 진도율은 표시하지
-              않습니다.
-            </Empty>
-          )}
-        </div>
-      </Section>
+      {(field.id === "chinese" || field.id === "spanish") && (
+        <VocabularySummary area={field.id} />
+      )}
+      {(!vocabulary || materials.length > 0) && (
+        <Section title="등록한 자료">
+          <div className="v1-three-grid">
+            {materials.length ? (
+              materials.map((m) => <MaterialSummary material={m} key={m.id} />)
+            ) : (
+              <Empty>
+                아직 등록된 자료가 없습니다. 임의의 학습 자료나 진도율은
+                표시하지 않습니다.
+              </Empty>
+            )}
+          </div>
+        </Section>
+      )}
       <Section title="학습 기록">
         <LogList logs={logs} />
       </Section>

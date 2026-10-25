@@ -69,7 +69,7 @@ test("legacy task checkboxes, notes and storage remain valid without invented tr
   );
   assert.equal(
     taskTemplates.find((t) => t.id === "chinese-hsk6").tracking.total,
-    null,
+    2500,
   );
   assert.equal(old.tasks.length, 1); // Registration templates are not automatically created tasks.
 });

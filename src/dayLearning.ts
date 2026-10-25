@@ -7,9 +7,9 @@ import {
   type DayRoundState,
 } from "./model.ts";
 export const isDayBook = (m: Material) =>
-  m.area === "english" &&
   m.kind === "days" &&
-  ["vocabulary", "phrases"].includes(m.id);
+  ((m.area === "english" && ["vocabulary", "phrases"].includes(m.id)) ||
+    (["chinese", "spanish"].includes(m.area) && !!m.vocabularyId));
 const active = (log: StudyLog) =>
   log.activity !== "system" &&
   !log.initialLearning &&
@@ -325,7 +325,13 @@ export function cancelDayReview(
 /** Remove legacy cancelled word-book reviews without touching EBS or active history. */
 export function removeCancelledDayReviews(data: DashboardData): DashboardData {
   return data.logs
-    .filter((log) => log.voided)
+    .filter(
+      (log) =>
+        log.voided &&
+        data.materials.some(
+          (m) => m.id === log.materialId && m.area === "english",
+        ),
+    )
     .reduce((current, log) => cancelDayReview(current, log.id), data);
 }
 
@@ -391,6 +397,7 @@ export function addDayLearning(
   if (
     !material ||
     !isDayBook(material) ||
+    !!material.vocabularyId ||
     expectedDay !== totalDays(material) + 1 ||
     expectedDay > 10000
   )

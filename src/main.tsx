@@ -1,3 +1,4 @@
+import { VocabularyPage } from "./Vocabulary";
 import React, { useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -61,6 +62,7 @@ function App() {
   const fieldId = location.pathname.split("/")[2];
   const activePath =
     location.pathname.startsWith("/english") ||
+    location.pathname.startsWith("/vocabulary/") ||
     ["chinese", "japanese", "spanish"].includes(fieldId)
       ? "/languages"
       : location.pathname.startsWith("/fields/")
@@ -164,6 +166,10 @@ function App() {
             <Route
               path="/materials/:id"
               element={<MaterialPage key={fieldId} />}
+            />
+            <Route
+              path="/vocabulary/:id"
+              element={<VocabularyPage key={fieldId} />}
             />
             <Route path="/tasks" element={<Tasks />} />
             <Route

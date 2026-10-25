@@ -542,6 +542,17 @@ export function TaskDetailPage() {
           </button>
         }
       />
+      {data.vocabularies
+        ?.filter((b) => b.taskId === task.id)
+        .map((b) => (
+          <Link
+            key={b.id}
+            className="text-link vocabulary-task-back"
+            to={`/vocabulary/${b.id}`}
+          >
+            단어 원본·중복 검토·Day 편입 관리 →
+          </Link>
+        ))}
       <section className="task-detail-summary" aria-label="과업 진행 상황">
         <TaskMetric task={task} />
         <div className="task-detail-meta">

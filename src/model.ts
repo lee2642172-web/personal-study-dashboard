@@ -42,6 +42,7 @@ export type Material = {
   title: string;
   area: FieldId;
   groupId?: string;
+  vocabularyId?: string;
   kind: "audio" | "units" | "days" | "reference" | "book" | "lectures";
   lectures?: Lecture[];
   /** Ongoing catalogs show the registered count rather than a final course total. */
@@ -143,12 +144,43 @@ export type DayBookState = {
 };
 export type DashboardData = {
   version: 1;
+  vocabularies?: VocabularyBook[];
   events?: CalendarEvent[];
   dayBooks?: DayBookState[];
   materials: Material[];
   logs: StudyLog[];
   goals: Goal[];
   tasks: Task[];
+};
+export type VocabularySheet = {
+  id: string;
+  title: string;
+  materialId: string;
+  startDay: number | null;
+  endDay: number | null;
+};
+export type VocabularyEntry = {
+  id: string;
+  sheetId: string;
+  term: string;
+  meaning: string;
+  note: string;
+  status: "pending" | "ready" | "excluded" | "imported" | "reference";
+  day: number | null;
+  position: number | null;
+};
+export type VocabularyBook = {
+  id: string;
+  area: "chinese" | "spanish";
+  materialId: string;
+  materialIds: string[];
+  baselineLastDay: number | null;
+  existingWordEstimate: number;
+  incomingWordEstimate: number;
+  wordsPerDay: 10;
+  sheets: VocabularySheet[];
+  taskId: string;
+  entries: VocabularyEntry[];
 };
 export type CalendarEvent = {
   id: string;

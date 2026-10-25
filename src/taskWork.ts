@@ -371,8 +371,8 @@ export const taskTemplates: {
     id: "chinese-hsk6",
     area: "chinese",
     title: "HSK 6급 단어 정리",
-    tracking: { mode: "quantity", total: null, unit: "단어" },
-    note: "HSK 급수별 Excel 시트 구분과 전체 연속 Day 번호 유지. 원본의 마지막 Day·수량 확인 후 작업 범위를 설정하세요.",
+    tracking: { mode: "quantity", total: 2500, unit: "단어" },
+    note: "HSK 6급 추가 정리 대상 약 2,500개(수정 가능). HSK 급수별 시트와 전체 연속 Day 번호를 유지하며 기존 마지막 Day는 원본에서 확인합니다.",
   },
   {
     id: "hiragana",

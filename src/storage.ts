@@ -1,3 +1,4 @@
+import { includeVocabularies, validVocabulary } from "./vocabulary.ts";
 import { includeFinancialAccounting } from "./catalogs/financialAccounting.ts";
 import { validTask } from "./taskWork.ts";
 import { validCalendarEvent } from "./calendar.ts";
@@ -38,6 +39,15 @@ export function validData(v: unknown): v is DashboardData {
     !["materials", "logs", "goals", "tasks"].every((k) =>
       unique(v[k] as unknown[]),
     )
+  )
+    return false;
+  if (
+    v.vocabularies !== undefined &&
+    (!Array.isArray(v.vocabularies) ||
+      !unique(v.vocabularies) ||
+      !v.vocabularies.every(validVocabulary) ||
+      new Set(v.vocabularies.map((b) => (b as Record<string, unknown>).area))
+        .size !== v.vocabularies.length)
   )
     return false;
   if (
@@ -115,6 +125,7 @@ export function validData(v: unknown): v is DashboardData {
             ).size === m.lectures.length)) &&
         materialStatuses.includes(m.status as never) &&
         (m.groupId === undefined || typeof m.groupId === "string") &&
+        (m.vocabularyId === undefined || typeof m.vocabularyId === "string") &&
         positiveOrNull(m.total) &&
         positiveOrNull(m.targetPasses) &&
         numberOrNull(m.duration) &&
@@ -187,12 +198,14 @@ export const browserRepository: DashboardRepository = {
       throw new Error(
         "저장된 데이터 형식을 읽을 수 없습니다. 원본을 보존하며 저장을 중단했습니다.",
       );
-    return includeFinancialAccounting(
-      includeCostManagementAccounting(
-        includeCustomsLawIntro(
-          includeDomesticConsumptionTax(
-            includeCustomsTradeEnglish(
-              removeCancelledDayReviews(connectEbsGroup(data)),
+    return includeVocabularies(
+      includeFinancialAccounting(
+        includeCostManagementAccounting(
+          includeCustomsLawIntro(
+            includeDomesticConsumptionTax(
+              includeCustomsTradeEnglish(
+                removeCancelledDayReviews(connectEbsGroup(data)),
+              ),
             ),
           ),
         ),

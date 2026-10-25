@@ -33,7 +33,8 @@ export function MaterialForm({
   value?: Material;
   onClose: () => void;
 }) {
-  const { update } = useData();
+  const { data, update } = useData();
+  const [error, setError] = useState("");
   const [m, setM] = useState<Material>(
     value ?? {
       id: newId(),
@@ -53,6 +54,28 @@ export function MaterialForm({
   const patch = (p: Partial<Material>) => setM({ ...m, ...p });
   function submit(e: FormEvent) {
     e.preventDefault();
+    const vocabulary = data.vocabularies?.find(
+      (b) => b.id === m.vocabularyId && b.materialId === m.id,
+    );
+    if (vocabulary) {
+      const minimum = Math.max(
+        vocabulary.baselineLastDay ?? 0,
+        0,
+        ...vocabulary.entries
+          .filter((e) => e.status === "imported")
+          .map((e) => e.day!),
+      );
+      if (
+        m.kind !== "days" ||
+        m.area !== vocabulary.area ||
+        (m.total ?? 0) < minimum
+      ) {
+        setError(
+          `연결된 단어장은 Day 단위와 언어를 유지하고, 기존·편입 Day ${minimum}보다 전체량을 줄일 수 없습니다.`,
+        );
+        return;
+      }
+    }
     update((d) => ({
       ...d,
       materials: d.materials.some((x) => x.id === m.id)
@@ -197,6 +220,11 @@ export function MaterialForm({
           기록은 학습 기록 화면에 남습니다. 자료 등록은 할 일을 자동 생성하지
           않습니다. 자료 등록만으로 학습시간을 추가하지 않습니다.
         </p>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
         <button className="primary-button" type="submit">
           자료 저장
         </button>

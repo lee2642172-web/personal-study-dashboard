@@ -1,3 +1,4 @@
+import { includeVocabularies } from "./vocabulary.ts";
 import { createFinancialAccounting } from "./catalogs/financialAccounting.ts";
 import { createCostManagementAccounting } from "./catalogs/costManagementAccounting.ts";
 import { createCustomsLawIntro } from "./catalogs/customsLawIntro.ts";
@@ -116,7 +117,7 @@ export function createInitialData(): DashboardData {
       logs.push(reported(m.id, date));
   for (let unit = 1; unit <= 6; unit++)
     logs.push(reported("basic", String(unit)));
-  return {
+  return includeVocabularies({
     version: 1,
     materials,
     logs,
@@ -183,5 +184,5 @@ export function createInitialData(): DashboardData {
         ],
       },
     ],
-  };
+  });
 }
