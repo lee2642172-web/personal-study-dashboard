@@ -4974,11 +4974,6 @@ footer > span:first-child {
 }
 
 /* Simple one-off todos remain separate from long-running progress projects. */
-.today-learning-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
 .todo-board {
   padding: 24px;
   margin-bottom: 32px;

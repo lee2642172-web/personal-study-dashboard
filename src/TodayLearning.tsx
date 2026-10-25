@@ -159,16 +159,10 @@ export function TodayLearning({ compact = false }: { compact?: boolean }) {
               : "실제 기록일 기준 · 학습과 완료한 할 일의 시간을 합산합니다."}
           </p>
         </div>
-        <div className="today-learning-links">
-          <Link className="text-link" to="/records">
-            전체 학습 기록
-            <ArrowUpRight size={14} />
-          </Link>
-          <Link className="text-link" to="/tasks">
-            할 일·과업 관리
-            <ArrowUpRight size={14} />
-          </Link>
-        </div>
+        <Link className="text-link" to="/records">
+          전체 학습 기록
+          <ArrowUpRight size={14} />
+        </Link>
       </footer>
     </section>
   );
