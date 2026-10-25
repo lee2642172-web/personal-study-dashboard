@@ -1,5 +1,10 @@
 import { VocabularySummary } from "./Vocabulary";
-import { LanguageTasks, TaskBoard } from "./Tasks";
+import { LanguageTasks, TaskBoard, WorkRecordForm } from "./Tasks";
+import { TodoEditor } from "./Todos";
+import { activityEntries } from "./activities";
+import { timedStudyLogs } from "./dashboard";
+import { workLabel } from "./taskWork";
+import { useLocalDate } from "./useLocalDate";
 import {
   StudyTimeSummary,
   StudyTimeChart,
@@ -246,7 +251,7 @@ export function Home() {
       <PageHeading
         eyebrow="LEARNING OVERVIEW"
         title="학습 상황판"
-        description="학습과 완료한 할 일의 누적시간, 강의 진도를 한눈에 확인하세요."
+        description="학습·할 일·과업 작업의 누적시간과 강의 진도를 한눈에 확인하세요."
       />
       <StudyTimeSummary />
       <div className="home-daily-grid">
@@ -922,32 +927,46 @@ export function LogList({
   );
 }
 export function Records() {
-  const { data } = useData();
-  const [editing, setEditing] = useState<StudyLog | null>(null);
-  const [type, setType] = useState("all");
-  const [area, setArea] = useState("all");
-  const [date, setDate] = useState("");
-  const filtered = data.logs.filter(
-    (l) =>
-      !l.voided &&
-      (type === "all" || l.activity === type) &&
-      (area === "all" || l.area === area) &&
-      (!date || l.date === date),
-  );
-  const sum = (activity: string) => {
-    const timed = filtered.filter(
-      (l) => l.activity === activity && l.minutes !== null,
+  const { data } = useData(),
+    today = useLocalDate();
+  const [editing, setEditing] = useState<StudyLog | null>(null),
+    [type, setType] = useState("all"),
+    [area, setArea] = useState("all"),
+    [date, setDate] = useState("");
+  const [workEditing, setWorkEditing] = useState<{
+    taskId: string;
+    recordId: string;
+  } | null>(null);
+  const [todoEditing, setTodoEditing] = useState<string | null>(null);
+  const filtered = activityEntries(data)
+    .filter(
+      (entry) =>
+        !entry.voided &&
+        (type === "all" || entry.activity === type) &&
+        (area === "all" || entry.area === area) &&
+        (!date || entry.date === date),
+    )
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  const sum = (entries: typeof filtered) =>
+    timedStudyLogs(entries, today).reduce(
+      (total, entry) => total + entry.minutes!,
+      0,
     );
-    return timed.length
-      ? `${timed.reduce((s, l) => s + (l.minutes ?? 0), 0)}분`
-      : "미기록";
-  };
+  const groups = new Map<string, typeof filtered>();
+  for (const entry of filtered) {
+    const key = entry.date ?? "날짜 미입력";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(entry);
+  }
+  const workTask = data.tasks.find((t) => t.id === workEditing?.taskId),
+    workRecord = workTask?.records?.find((r) => r.id === workEditing?.recordId);
+  const todo = data.todos?.find((t) => t.id === todoEditing);
   return (
     <>
       <PageHeading
-        eyebrow="LEARNING LOG"
+        eyebrow="ACTIVITY LOG"
         title="학습 기록"
-        description="전체 기간의 학습·복습·자료 정비 기록입니다. 날짜로 필터링할 수 있으며, 취소한 기록은 표시하지 않습니다."
+        description="학습·복습·할 일·과업 작업을 실제 기록일 기준으로 함께 확인하세요."
         action={
           <button
             className="primary-button"
@@ -961,18 +980,28 @@ export function Records() {
       <div className="v1-filters">
         <label>
           활동 구분
-          <select value={type} onChange={(e) => setType(e.target.value)}>
+          <select
+            aria-label="기록 활동 구분"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+          >
             <option value="all">전체</option>
             {Object.entries(ActivityLabels).map(([id, label]) => (
               <option key={id} value={id}>
                 {label}
               </option>
             ))}
+            <option value="task">과업 작업</option>
+            <option value="todo">할 일 완료</option>
           </select>
         </label>
         <label>
           분야
-          <select value={area} onChange={(e) => setArea(e.target.value)}>
+          <select
+            aria-label="기록 분야"
+            value={area}
+            onChange={(e) => setArea(e.target.value)}
+          >
             <option value="all">전체</option>
             {fields.map((f) => (
               <option value={f.id} key={f.id}>
@@ -984,6 +1013,7 @@ export function Records() {
         <label>
           실제 학습 날짜
           <input
+            aria-label="실제 학습 날짜"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
@@ -1000,35 +1030,88 @@ export function Records() {
           필터 초기화
         </button>
       </div>
-      <div className="stats activity-stats">
-        <Stat
-          label="학습시간"
-          value={sum("study")}
-          note="선택 조건 내 실제 입력 시간"
-        />
-        <Stat
-          label="복습시간"
-          value={sum("review")}
-          note="선택 조건 내 실제 입력 시간"
-        />
-        <Stat
-          label="자료 정비시간"
-          value={sum("system")}
-          note="학습시간에서 분리"
-        />
+      <div
+        className="record-time-total"
+        role="group"
+        aria-label="선택 기록 총 시간"
+      >
+        <span>{date ? `${date} 총 학습시간` : "선택 기록 총 학습시간"}</span>
+        <strong>{sum(filtered)}분</strong>
+        <small>
+          선택 기록 {filtered.length}건 · 시간 미입력{" "}
+          {filtered.filter((e) => e.minutes === null).length}건
+        </small>
       </div>
-      <p className="micro-note">
-        선택한 기록 {filtered.length}건 · 날짜 미입력{" "}
-        {filtered.filter((l) => !l.date).length}건 · 시간 미입력{" "}
-        {filtered.filter((l) => l.minutes === null).length}건. 자료별 진도와
-        회독은 각 자료 상세 화면에서 확인할 수 있습니다.
-      </p>
-      <LogList
-        logs={[...filtered].sort((a, b) =>
-          (b.date ?? "").localeCompare(a.date ?? ""),
-        )}
-        onEdit={setEditing}
-      />
+      {filtered.length ? (
+        [...groups].map(([day, entries]) => (
+          <section
+            className="activity-day"
+            key={day}
+            aria-label={`${day} 활동 기록`}
+          >
+            <header>
+              <h2>{day}</h2>
+              <span>{sum(entries)}분</span>
+            </header>
+            {entries.map((entry) =>
+              entry.source === "study" ? (
+                <LogList
+                  key={entry.id}
+                  logs={[entry.log]}
+                  onEdit={setEditing}
+                />
+              ) : (
+                <article className="activity-work-record" key={entry.id}>
+                  <div>
+                    <h3>{entry.title}</h3>
+                    <p>
+                      {entry.source === "task"
+                        ? `${fieldName(entry.task.area)} · ${workLabel(entry.task, entry.record)} · ${entry.record.mode === "session" ? "시간 기록" : entry.record.completed === false ? "작업 중" : "범위 완료"}`
+                        : "할 일 완료"}{" "}
+                      ·{" "}
+                      {entry.minutes === null
+                        ? "시간 미입력"
+                        : `${entry.minutes}분`}
+                    </p>
+                    {entry.source === "task" && entry.record.note && (
+                      <small>{entry.record.note}</small>
+                    )}
+                    {entry.source === "task" &&
+                      entry.record.mode !== "session" &&
+                      entry.record.scope && <small>{entry.record.scope}</small>}
+                    <Link
+                      className="text-link"
+                      to={
+                        entry.source === "task"
+                          ? `/tasks/${entry.task.id}`
+                          : `/tasks?todo=${encodeURIComponent(entry.todo.id)}`
+                      }
+                    >
+                      {entry.source === "task" ? "과업 상세" : "할 일 상세"} →
+                    </Link>
+                  </div>
+                  <button
+                    className="icon-button"
+                    aria-label={`${entry.title} 기록 수정`}
+                    onClick={() =>
+                      entry.source === "task"
+                        ? setWorkEditing({
+                            taskId: entry.task.id,
+                            recordId: entry.record.id,
+                          })
+                        : setTodoEditing(entry.todo.id)
+                    }
+                  >
+                    <Pencil size={16} />
+                  </button>
+                </article>
+              ),
+            )}
+          </section>
+        ))
+      ) : (
+        <Empty>선택 조건의 기록이 없습니다.</Empty>
+      )}
       {editing && (
         <LogForm
           value={editing}
@@ -1036,6 +1119,14 @@ export function Records() {
           onClose={() => setEditing(null)}
         />
       )}
+      {workTask && workRecord && (
+        <WorkRecordForm
+          task={workTask}
+          value={workRecord}
+          onClose={() => setWorkEditing(null)}
+        />
+      )}
+      {todo && <TodoEditor value={todo} onClose={() => setTodoEditing(null)} />}
     </>
   );
 }

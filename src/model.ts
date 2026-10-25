@@ -130,10 +130,19 @@ export type TaskTracking = {
   roundTarget?: number | null;
   materialId?: string;
 };
-export type TaskWorkRecord = { id: string; date: string; note: string } & (
+export type TaskWorkRecord = {
+  id: string;
+  date: string;
+  note: string;
+  minutes?: number | null;
+  /** Legacy progress records without this flag retain their completed progress. */
+  completed?: boolean;
+  scope?: string;
+} & (
   | { mode: "day-range"; startDay: number; endDay: number }
   | { mode: "quantity"; quantity: number }
   | { mode: "rounds" }
+  | { mode: "session" }
 );
 export type DayRoundState = {
   round: number;

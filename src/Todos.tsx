@@ -8,7 +8,7 @@ import { useData } from "./state";
 import { Dialog } from "./ui";
 import { addTodo, editTodo, completeTodo, undoTodo, deleteTodo } from "./todos";
 
-function TodoEditor({
+export function TodoEditor({
   value,
   onClose,
 }: {

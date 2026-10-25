@@ -40,12 +40,12 @@ const fixture = () => {
     log("bad-date", "2026-10-32", 90),
   ];
 };
-test("HOME summaries and weekly charts use Monday–Sunday, excluding previous-week, future, cancelled, unknown and system time", () => {
+test("HOME summaries and weekly charts use Monday–Sunday, including work time and excluding previous-week, future, cancelled and unknown time", () => {
   const logs = fixture();
   assert.deepEqual(studySummary(logs, ref), {
-    today: 42,
-    week: 62,
-    month: 172,
+    today: 130,
+    week: 150,
+    month: 260,
   });
   assert.deepEqual(studySummary([], ref), { today: 0, week: 0, month: 0 });
   const series = studySeries(logs, ref, "7");
@@ -53,7 +53,7 @@ test("HOME summaries and weekly charts use Monday–Sunday, excluding previous-w
   assert.equal(series.at(-1).date, "2026-10-25");
   assert.deepEqual(
     series.map((p) => p.minutes),
-    [0, 20, 42, 0, 0, 0, 0],
+    [0, 20, 130, 0, 0, 0, 0],
   );
   assert.equal(
     studySeries(logs, ref, "7", undefined, "customs").find(
@@ -110,7 +110,7 @@ test("chart supports thirty dates, full calendar months, leap years and zeroes f
   assert.equal(october.length, 31);
   assert.equal(
     october.reduce((n, p) => n + p.minutes, 0),
-    172,
+    260,
   );
   assert.equal(october.find((p) => p.date === "2026-10-22").minutes, 0);
   assert.equal(studySeries([], "2028-03-01", "month", "2028-02").length, 29);
@@ -120,17 +120,17 @@ test("chart supports thirty dates, full calendar months, leap years and zeroes f
 test("edits and cancellation immediately recalculate; duplicate IDs do not double-count intentional distinct reviews", () => {
   const logs = fixture();
   logs.push({ ...logs.find((l) => l.id === "today") });
-  assert.equal(studySummary(logs, ref).today, 42);
+  assert.equal(studySummary(logs, ref).today, 130);
   const edited = logs
     .filter((l, i) => i !== logs.length - 1)
     .map((l) => (l.id === "today" ? { ...l, minutes: 11 } : l));
-  assert.equal(studySummary(edited, ref).today, 23);
+  assert.equal(studySummary(edited, ref).today, 111);
   assert.equal(
     studySummary(
       edited.map((l) => (l.id === "today" ? { ...l, voided: true } : l)),
       ref,
     ).today,
-    12,
+    100,
   );
   let data = recordEbsLearning(
     createInitialData(),

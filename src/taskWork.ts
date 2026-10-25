@@ -32,6 +32,16 @@ export function validWorkRecord(v: unknown): v is TaskWorkRecord {
     typeof v.note !== "string"
   )
     return false;
+  if (
+    (v.minutes !== undefined &&
+      v.minutes !== null &&
+      (typeof v.minutes !== "number" ||
+        !Number.isFinite(v.minutes) ||
+        v.minutes < 0)) ||
+    (v.completed !== undefined && typeof v.completed !== "boolean") ||
+    (v.scope !== undefined && typeof v.scope !== "string")
+  )
+    return false;
   if (v.mode === "day-range")
     return (
       positive(v.startDay) &&
@@ -39,7 +49,14 @@ export function validWorkRecord(v: unknown): v is TaskWorkRecord {
       Number(v.endDay) >= Number(v.startDay)
     );
   if (v.mode === "quantity") return positive(v.quantity);
-  return v.mode === "rounds";
+  return (
+    v.mode === "rounds" ||
+    (v.mode === "session" &&
+      v.completed !== true &&
+      (v.minutes != null ||
+        !!v.note.trim() ||
+        (typeof v.scope === "string" && !!v.scope.trim())))
+  );
 }
 export function validTask(v: unknown): v is Task {
   if (
@@ -110,10 +127,9 @@ export function validTask(v: unknown): v is Task {
     task.records?.some(
       (r) =>
         r.mode === "day-range" &&
-        (!positive(task.tracking?.dayStart) ||
-          !positive(task.tracking?.dayEnd) ||
-          r.startDay < task.tracking.dayStart ||
-          r.endDay > task.tracking.dayEnd),
+        ((task.tracking?.dayStart !== undefined &&
+          r.startDay < task.tracking.dayStart) ||
+          (task.tracking?.dayEnd != null && r.endDay > task.tracking.dayEnd)),
     )
   )
     return false;
@@ -134,8 +150,8 @@ export function taskSettingsError(task: Task): string {
     task.records?.some(
       (r) =>
         r.mode === "day-range" &&
-        (r.startDay < (task.tracking?.dayStart ?? Infinity) ||
-          r.endDay > (task.tracking?.dayEnd ?? 0)),
+        (r.startDay < (task.tracking?.dayStart ?? 1) ||
+          r.endDay > (task.tracking?.dayEnd ?? Infinity)),
     )
   )
     return "기존 작업 구간을 포함하는 전체 Day 범위를 설정해 주세요. 이력은 임의로 잘라내지 않습니다.";
@@ -149,13 +165,13 @@ export function recordError(
   asOf: string,
 ): string {
   if (!validWorkRecord(record))
-    return "실제 날짜와 양수인 작업 범위를 확인해 주세요.";
+    return "작업 날짜·범위와 0 이상의 소요시간을 확인해 주세요. 범위 없이 기록할 때는 시간이나 작업 내용을 입력하세요.";
   if (record.date > asOf)
     return "실제로 작업한 날짜는 오늘 이후로 입력할 수 없습니다.";
   if (
     record.mode === "day-range" &&
-    (record.startDay < (task.tracking?.dayStart ?? Infinity) ||
-      record.endDay > (task.tracking?.dayEnd ?? 0))
+    (record.startDay < (task.tracking?.dayStart ?? 1) ||
+      record.endDay > (task.tracking?.dayEnd ?? Infinity))
   )
     return "작업 구간은 설정된 전체 Day 범위 안에 입력해 주세요.";
   return "";
@@ -180,7 +196,13 @@ export function saveTaskRecord(
   if (!task || !isDateString(asOf) || recordError(task, record, asOf))
     return data;
   const prior = task.records?.find((r) => r.id === record.id);
-  if (prior ? prior.mode !== record.mode : record.mode !== taskMode(task))
+  if (
+    prior
+      ? prior.mode !== record.mode
+      : record.mode !== "session" &&
+        record.mode !== taskMode(task) &&
+        !(taskMode(task) === "steps" && record.mode === "day-range")
+  )
     return data;
   return {
     ...data,
@@ -267,7 +289,10 @@ export function toggleTaskStep(
 }
 export function mergedDayRanges(records: TaskWorkRecord[]) {
   const ranges = records
-    .filter((r) => r.mode === "day-range")
+    .filter(
+      (r): r is Extract<TaskWorkRecord, { mode: "day-range" }> =>
+        r.mode === "day-range" && r.completed !== false,
+    )
     .map((r) => [r.startDay, r.endDay] as [number, number])
     .sort((a, b) => a[0] - b[0]);
   const merged: [number, number][] = [];
@@ -280,7 +305,9 @@ export function mergedDayRanges(records: TaskWorkRecord[]) {
 }
 export function taskProgress(task: Task) {
   const mode = taskMode(task),
-    records = (task.records ?? []).filter((r) => r.mode === mode);
+    records = (task.records ?? []).filter(
+      (r) => r.mode === mode && r.completed !== false,
+    );
   let done = 0,
     total: number | null = null,
     unit = "단계";
@@ -330,7 +357,7 @@ export function taskProgress(task: Task) {
 export function roundNumber(task: Task, recordId: string) {
   return (
     [...(task.records ?? [])]
-      .filter((r) => r.mode === "rounds")
+      .filter((r) => r.mode === "rounds" && r.completed !== false)
       .sort((a, b) => a.date.localeCompare(b.date))
       .findIndex((r) => r.id === recordId) + 1
   );
@@ -340,7 +367,38 @@ export const workLabel = (task: Task, record: TaskWorkRecord) =>
     ? `Day ${record.startDay}~${record.endDay}`
     : record.mode === "quantity"
       ? `${record.quantity.toLocaleString()} ${task.tracking?.unit || "개"}`
-      : `${roundNumber(task, record.id)}회독 완료`;
+      : record.mode === "rounds"
+        ? record.completed === false
+          ? "회독 진행 중"
+          : `${roundNumber(task, record.id)}회독 완료`
+        : record.scope || "범위 없이 작업";
+
+export function taskWorkSummary(task: Task) {
+  const records = task.records ?? [];
+  const measured = records.filter((r) => r.minutes != null);
+  return {
+    minutes: measured.reduce((sum, r) => sum + r.minutes!, 0),
+    measuredCount: measured.length,
+    latest: [...records]
+      .reverse()
+      .sort((a, b) => b.date.localeCompare(a.date))[0],
+    latestDate: records.reduce(
+      (latest, r) => (r.date > latest ? r.date : latest),
+      "",
+    ),
+    completedDays: mergedDayRanges(records).reduce(
+      (sum, [s, e]) => sum + e - s + 1,
+      0,
+    ),
+    hasDayRecords: records.some((r) => r.mode === "day-range"),
+  };
+}
+export const workModeLabels = { ...trackingLabels, session: "작업 시간" };
+export function formatWorkMinutes(minutes: number) {
+  const hours = Math.floor(minutes / 60),
+    rest = Number((minutes % 60).toFixed(2));
+  return hours ? `${hours}시간${rest ? ` ${rest}분` : ""}` : `${minutes}분`;
+}
 export const taskTemplates: {
   id: string;
   area: FieldId;

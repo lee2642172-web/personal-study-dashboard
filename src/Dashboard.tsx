@@ -163,8 +163,8 @@ export function StudyTimeChart() {
       </div>
       <p className="micro-note">
         {period === "month" ? "선택한 월의 일별 기록 · " : ""}실제 기록일 기준 ·
-        전체 분야에는 일반 할 일 완료시간도 합산합니다. 막대를 누르면 날짜별
-        시간을 확인할 수 있어요.
+        학습·할 일·과업 작업시간을 함께 합산합니다. 막대를 누르면 날짜별 시간을
+        확인할 수 있어요.
       </p>
     </section>
   );

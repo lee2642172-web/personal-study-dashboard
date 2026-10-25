@@ -2,11 +2,12 @@ import { useLocalDate } from "./useLocalDate";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, Clock3 } from "lucide-react";
 import { useData } from "./state";
-import { learningTime } from "./studyTime";
+import { activityEntries } from "./activities";
+import { timedStudyLogs } from "./dashboard";
+import { workLabel } from "./taskWork";
 import { fieldName, type Material, type StudyLog } from "./model";
 import { isEbsCourse } from "./ebs";
 import { ActivityLabels } from "./ui";
-import { completedTodos } from "./todos";
 
 function itemLabel(log: StudyLog, material?: Material): string {
   if (!log.item) return "";
@@ -28,16 +29,13 @@ function itemLabel(log: StudyLog, material?: Material): string {
 export function TodayLearning({ compact = false }: { compact?: boolean }) {
   const { data } = useData();
   const date = useLocalDate();
-  const today = learningTime(data.logs, "today", date, date);
-  const entries = [...today.study].reverse();
-  const todos = completedTodos(data.todos)
-    .filter((t) => t.completion!.date === date)
+  const entries = activityEntries(data)
+    .filter((entry) => !entry.voided && entry.date === date)
     .reverse();
-  const entryCount = entries.length + todos.length;
-  const totalMinutes =
-    today.studyMinutes +
-    todos.reduce((sum, t) => sum + t.completion!.minutes, 0);
-  const unknown = entries.filter((log) => log.minutes === null).length;
+  const measured = timedStudyLogs(entries, date);
+  const entryCount = entries.length;
+  const totalMinutes = measured.reduce((sum, entry) => sum + entry.minutes!, 0);
+  const unknown = entries.filter((entry) => entry.minutes === null).length;
   return (
     <section
       className={`today-learning ${compact ? "is-compact" : ""}`}
@@ -54,7 +52,7 @@ export function TodayLearning({ compact = false }: { compact?: boolean }) {
             <h1 id="today-learning-title">오늘의 기록</h1>
           )}
           <p className="today-learning-count">
-            학습·할 일 완료 기록 {entryCount}건
+            학습·할 일·작업 기록 {entryCount}건
           </p>
         </div>
         {!compact && (
@@ -63,7 +61,7 @@ export function TodayLearning({ compact = false }: { compact?: boolean }) {
               <Clock3 size={15} />총 기록시간
             </span>
             <strong>
-              {today.hasStudyTime || todos.length
+              {measured.length
                 ? `${totalMinutes}분`
                 : entryCount
                   ? "시간 미입력"
@@ -78,27 +76,39 @@ export function TodayLearning({ compact = false }: { compact?: boolean }) {
           aria-label="오늘 기록 목록"
           tabIndex={0}
         >
-          {todos.map((todo) => (
-            <li key={`todo:${todo.id}`}>
-              <Link
-                className="today-learning-entry"
-                to={`/tasks?todo=${encodeURIComponent(todo.id)}`}
-              >
-                <div className="today-learning-entry-copy">
-                  <h2>{todo.title}</h2>
-                  <p>
-                    <span className="today-learning-type">완료</span>
-                    {todo.completion!.date}
-                  </p>
-                </div>
-                <span className="today-learning-time">
-                  {todo.completion!.minutes}분
-                </span>
-                <ArrowUpRight size={15} aria-hidden="true" />
-              </Link>
-            </li>
-          ))}
-          {entries.map((log) => {
+          {entries.map((entry) => {
+            if (entry.source !== "study") {
+              const destination =
+                entry.source === "todo"
+                  ? `/tasks?todo=${encodeURIComponent(entry.todo.id)}`
+                  : `/tasks/${entry.task.id}`;
+              return (
+                <li key={entry.id}>
+                  <Link className="today-learning-entry" to={destination}>
+                    <div className="today-learning-entry-copy">
+                      <h2>{entry.title}</h2>
+                      <p>
+                        <span className="today-learning-type">
+                          {entry.source === "todo" ? "완료" : "작업"}
+                        </span>
+                        {entry.source === "task"
+                          ? `${fieldName(entry.task.area)} · ${workLabel(entry.task, entry.record)}`
+                          : entry.date}
+                      </p>
+                    </div>
+                    <span
+                      className={`today-learning-time ${entry.minutes === null ? "is-unknown" : ""}`}
+                    >
+                      {entry.minutes === null
+                        ? "시간 미입력"
+                        : `${entry.minutes}분`}
+                    </span>
+                    <ArrowUpRight size={15} aria-hidden="true" />
+                  </Link>
+                </li>
+              );
+            }
+            const log = entry.log;
             const material = data.materials.find(
               (m) => m.id === log.materialId,
             );
@@ -143,7 +153,8 @@ export function TodayLearning({ compact = false }: { compact?: boolean }) {
         <div className="today-learning-empty">
           <p>아직 오늘의 기록이 없습니다.</p>
           <span>
-            학습을 기록하거나 할 일을 완료하면 목록과 시간이 표시됩니다.
+            학습·과업 작업을 기록하거나 할 일을 완료하면 목록과 시간이
+            표시됩니다.
           </span>
           <Link className="text-link" to="/english">
             영어 학습으로
@@ -156,7 +167,7 @@ export function TodayLearning({ compact = false }: { compact?: boolean }) {
           <p>
             {unknown
               ? `시간 미입력 ${unknown}건은 합계에 포함되지 않았습니다.`
-              : "실제 기록일 기준 · 학습과 완료한 할 일의 시간을 합산합니다."}
+              : "실제 기록일 기준 · 학습·할 일·과업 작업시간을 합산합니다."}
           </p>
         </div>
         <Link className="text-link" to="/records">

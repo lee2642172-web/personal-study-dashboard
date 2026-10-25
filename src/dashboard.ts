@@ -1,25 +1,17 @@
 import { type DashboardData, type StudyLog, type FieldId } from "./model.ts";
 import { isDateString, shiftDate, calendarDates, weekStart } from "./dates.ts";
 import { lectureCompleted } from "./lectureLearning.ts";
-import { completedTodos } from "./todos.ts";
+import { activityEntries } from "./activities.ts";
 
 type TimeEntry = Pick<StudyLog, "id" | "date" | "minutes"> & {
-  activity: StudyLog["activity"] | "todo";
+  activity: StudyLog["activity"] | "todo" | "task";
   area?: FieldId;
   voided?: boolean;
 };
 
 /** Projection only: completion time has one persisted owner and never becomes a duplicate study log. */
 export function dashboardTimeEntries(data: DashboardData): TimeEntry[] {
-  return [
-    ...data.logs.map((log) => ({ ...log, id: `study:${log.id}` })),
-    ...completedTodos(data.todos).map((todo) => ({
-      id: `todo:${todo.id}`,
-      date: todo.completion!.date,
-      minutes: todo.completion!.minutes,
-      activity: "todo" as const,
-    })),
-  ];
+  return activityEntries(data);
 }
 
 /** Count actual sessions once by ID; never deduplicate intentional replays by episode. */
@@ -34,7 +26,6 @@ export function timedStudyLogs(
     seen.add(log.id);
     return (
       !log.voided &&
-      log.activity !== "system" &&
       log.date &&
       isDateString(log.date) &&
       log.date <= asOf &&

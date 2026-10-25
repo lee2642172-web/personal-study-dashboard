@@ -32,6 +32,9 @@ import {
   deleteTaskStep,
   toggleTaskStep,
   workLabel,
+  taskWorkSummary,
+  formatWorkMinutes,
+  workModeLabels,
 } from "./taskWork";
 
 function TaskMetric({ task }: { task: Task }) {
@@ -70,6 +73,7 @@ function TaskMetric({ task }: { task: Task }) {
 }
 export function TaskOverviewCard({ task }: { task: Task }) {
   const p = taskProgress(task);
+  const work = taskWorkSummary(task);
   const latestStep = task.items
     .filter((i) => i.done && i.completedDate)
     .sort((a, b) => b.completedDate!.localeCompare(a.completedDate!))[0];
@@ -84,14 +88,17 @@ export function TaskOverviewCard({ task }: { task: Task }) {
       <h3>{task.title}</h3>
       <TaskMetric task={task} />
       <p className="task-last-work">
-        {p.latest
-          ? `${p.latest.date} · ${workLabel(task, p.latest)}`
+        {work.latest
+          ? `${work.latest.date} · ${workLabel(task, work.latest)}`
           : p.date
             ? `${p.date} · ${latestStep?.title ?? "단계 완료"}`
             : p.mode === "steps" && p.done > 0
               ? "완료 체크 기록 있음 · 실제 날짜 미입력"
               : "작업 기록 전"}
       </p>
+      {work.measuredCount > 0 && (
+        <small>누적 작업시간 {formatWorkMinutes(work.minutes)}</small>
+      )}
       {task.targetDate && <small>목표 완료일 {task.targetDate}</small>}
     </Link>
   );
@@ -286,7 +293,7 @@ export function TaskBoard() {
     </>
   );
 }
-function WorkRecordForm({
+export function WorkRecordForm({
   task,
   value,
   onClose,
@@ -295,11 +302,30 @@ function WorkRecordForm({
   value?: TaskWorkRecord;
   onClose: () => void;
 }) {
-  const { update } = useData();
+  const { data, update } = useData();
   const [recordId] = useState(() => value?.id ?? newId());
-  const mode = value?.mode ?? taskMode(task);
+  const nativeMode = taskMode(task);
+  const [mode, setMode] = useState<TaskWorkRecord["mode"]>(
+    () =>
+      value?.mode ??
+      (nativeMode === "steps"
+        ? task.records?.some((r) => r.mode === "day-range")
+          ? "day-range"
+          : "session"
+        : nativeMode),
+  );
+  const modes: TaskWorkRecord["mode"][] =
+    nativeMode === "steps" ? ["session", "day-range"] : ["session", nativeMode];
+  if (value && !modes.includes(value.mode)) modes.push(value.mode);
   const [date, setDate] = useState(value?.date ?? localDate()),
     [note, setNote] = useState(value?.note ?? ""),
+    [scope, setScope] = useState(value?.scope ?? ""),
+    [minutes, setMinutes] = useState(
+      value?.minutes == null ? "" : String(value.minutes),
+    ),
+    [completed, setCompleted] = useState(
+      value ? value.completed !== false && value.mode !== "session" : false,
+    ),
     [start, setStart] = useState(
       value?.mode === "day-range" ? String(value.startDay) : "",
     ),
@@ -310,19 +336,37 @@ function WorkRecordForm({
       value?.mode === "quantity" ? String(value.quantity) : "",
     ),
     [error, setError] = useState("");
+  const hasScope =
+    mode === "rounds" ||
+    (mode === "day-range" && !!start && !!end) ||
+    (mode === "quantity" && !!quantity);
   function submit(e: FormEvent) {
     e.preventDefault();
-    if (mode === "steps") return;
-    const base = { id: recordId, date, note };
+    const base = {
+      id: recordId,
+      date,
+      note,
+      scope,
+      minutes: minutes.trim() === "" ? null : Number(minutes),
+      completed: hasScope && completed,
+    };
     const record: TaskWorkRecord =
-      mode === "day-range"
+      mode === "day-range" && (start || end)
         ? { ...base, mode, startDay: Number(start), endDay: Number(end) }
-        : mode === "quantity"
+        : mode === "quantity" && quantity
           ? { ...base, mode, quantity: Number(quantity) }
-          : { ...base, mode: "rounds" };
+          : mode === "rounds"
+            ? { ...base, mode }
+            : { ...base, mode: "session", completed: false };
     const message = recordError(task, record, localDate());
-    if (message) {
-      setError(message);
+    if (
+      message ||
+      saveTaskRecord(data, task.id, record, localDate()) === data
+    ) {
+      setError(
+        message ||
+          "작업 시간·범위 또는 내용을 확인해 주세요. 기존 기록의 범위 방식은 변경할 수 없습니다.",
+      );
       return;
     }
     update((d) => saveTaskRecord(d, task.id, record, localDate()));
@@ -335,35 +379,67 @@ function WorkRecordForm({
     >
       <form className="v1-form" onSubmit={submit}>
         <p className="form-help">
-          {task.title} · {trackingLabels[mode]}
+          {task.title} · 완료하지 못한 작업도 시간과 내용을 기록할 수 있습니다.
         </p>
+        <div className="form-grid">
+          <label>
+            작업 날짜
+            <input
+              type="date"
+              required
+              max={localDate()}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </label>
+          <label>
+            소요시간 (분)
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value)}
+              placeholder="미측정 시 비우기"
+            />
+          </label>
+        </div>
         <label>
-          실제 작업 날짜
-          <input
-            type="date"
-            required
-            max={localDate()}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
+          작업 범위 방식
+          <select
+            aria-label="작업 범위 방식"
+            disabled={!!value}
+            value={mode}
+            onChange={(e) => {
+              setMode(e.target.value as TaskWorkRecord["mode"]);
+              setCompleted(false);
+            }}
+          >
+            {modes.map((m) => (
+              <option key={m} value={m}>
+                {m === "session"
+                  ? "범위 없이 기록 / 직접 설명"
+                  : workModeLabels[m]}
+              </option>
+            ))}
+          </select>
         </label>
         {mode === "day-range" && (
           <>
             <p className="form-help">
-              전체 Day {task.tracking?.dayStart}~{task.tracking?.dayEnd} ·
-              순서와 관계없이 입력하세요. 겹친 구간은 진도에서 한 번만
-              계산합니다.
+              시작·종료 Day를 자유롭게 지정하세요. 겹친 완료 구간은 한 번만
+              집계하고, 작업시간은 기록마다 합산합니다. 범위를 비워두면 시간만
+              기록합니다.
             </p>
             <div className="form-grid">
               <label>
                 작업 시작 Day
                 <input
-                  autoFocus
-                  required
                   type="number"
-                  step="1"
                   min={task.tracking?.dayStart ?? 1}
                   max={task.tracking?.dayEnd ?? undefined}
+                  step="1"
+                  required={!!value || !!start || !!end}
                   value={start}
                   onChange={(e) => setStart(e.target.value)}
                 />
@@ -371,11 +447,11 @@ function WorkRecordForm({
               <label>
                 작업 종료 Day
                 <input
-                  required
                   type="number"
-                  step="1"
                   min={task.tracking?.dayStart ?? 1}
                   max={task.tracking?.dayEnd ?? undefined}
+                  step="1"
+                  required={!!value || !!start || !!end}
                   value={end}
                   onChange={(e) => setEnd(e.target.value)}
                 />
@@ -385,14 +461,13 @@ function WorkRecordForm({
         )}
         {mode === "quantity" && (
           <label>
-            실제 처리 수량 ({task.tracking?.unit || "개"})
+            작업 수량 ({task.tracking?.unit || "개"}, 선택)
             <input
-              aria-label="실제 처리 수량"
-              autoFocus
-              required
+              aria-label="작업 수량"
               type="number"
               min="1"
               step="1"
+              required={!!value}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
             />
@@ -400,12 +475,39 @@ function WorkRecordForm({
         )}
         {mode === "rounds" && (
           <p className="form-help">
-            {task.tracking?.subject || task.title} · 이번에 실제로 완료한
-            1회독을 기록합니다. 목표 이후에도 제한 없이 추가할 수 있습니다.
+            {task.tracking?.subject || task.title} · 회독이 끝나지 않았어도
+            시간을 기록하세요.
           </p>
         )}
+        {mode !== "session" && (
+          <label className="task-progress-check">
+            <input
+              type="checkbox"
+              checked={completed && !!hasScope}
+              disabled={!hasScope}
+              onChange={(e) => setCompleted(e.target.checked)}
+            />
+            <span>
+              {mode === "rounds"
+                ? "이번 회독을 완료함"
+                : "입력한 작업 범위의 정비를 완료함"}
+              <small>
+                체크한 범위만 완료 진도에 반영합니다. 작업시간은 체크 여부와
+                관계없이 합산합니다.
+              </small>
+            </span>
+          </label>
+        )}
         <label>
-          작업 메모
+          작업 범위 설명 (선택)
+          <input
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
+            placeholder="예: 다의어 분리, PDF 인덱스 2장 검토"
+          />
+        </label>
+        <label>
+          작업 내용 및 메모 (선택)
           <textarea
             rows={3}
             value={note}
@@ -418,11 +520,7 @@ function WorkRecordForm({
           </p>
         )}
         <button className="primary-button">
-          {value
-            ? "기록 수정 저장"
-            : mode === "rounds"
-              ? "회독 완료 기록"
-              : "작업 기록 저장"}
+          {value ? "기록 수정 저장" : "작업 기록 저장"}
         </button>
         {value && (
           <button
@@ -522,13 +620,14 @@ export function TaskDetailPage() {
       </Empty>
     );
   const p = taskProgress(task),
+    work = taskWorkSummary(task),
     records = [...(task.records ?? [])]
       .reverse()
       .filter(
         (r) =>
           (!from || r.date >= from) &&
           (!to || r.date <= to) &&
-          `${r.note} ${workLabel(task, r)}`
+          `${r.note} ${r.scope ?? ""} ${r.minutes ?? ""} ${workLabel(task, r)}`
             .toLowerCase()
             .includes(query.toLowerCase()),
       )
@@ -598,7 +697,7 @@ export function TaskDetailPage() {
               남은 작업량 {p.remaining.toLocaleString()} {p.unit}
             </span>
           )}
-          {p.date && <span>최근 작업 {p.date}</span>}
+          {work.latestDate && <span>최근 작업 {work.latestDate}</span>}
           {task.targetDate && <span>목표 완료일 {task.targetDate}</span>}
           {task.tracking?.materialId && (
             <Link
@@ -609,21 +708,130 @@ export function TaskDetailPage() {
             </Link>
           )}
         </div>
-        {p.mode !== "steps" && (
-          <button className="primary-button" onClick={() => setRecord("new")}>
-            <Plus size={16} />
-            {p.mode === "rounds" ? "회독 완료 기록 추가" : "작업 기록 추가"}
-          </button>
-        )}
+        <div
+          className="task-time-summary"
+          role="group"
+          aria-label="누적 작업시간"
+        >
+          <div>
+            <span>누적 작업시간</span>
+            <strong>
+              {work.measuredCount || !task.records?.length
+                ? formatWorkMinutes(work.minutes)
+                : "시간 미입력"}
+            </strong>
+            {work.measuredCount > 0 && <small>총 {work.minutes}분</small>}
+          </div>
+          <div>
+            <span>최근 작업 날짜</span>
+            <strong>{work.latestDate || "기록 없음"}</strong>
+          </div>
+          {work.hasDayRecords && (
+            <div>
+              <span>정비 완료 Day</span>
+              <strong>{work.completedDays} Days</strong>
+              <small>완료로 표시한 구간의 합집합</small>
+            </div>
+          )}
+        </div>
+        <button className="primary-button" onClick={() => setRecord("new")}>
+          <Plus size={16} />
+          작업 기록 추가
+        </button>
         <p className="micro-note">
-          과업 기록은 학습시간·단어장 학습 진도에 자동 합산되지 않습니다. 목표
-          달성과 과업 상태는 별도로 관리합니다.
+          실제 작업일의 소요시간을 HOME과 학습 기록에 합산합니다. 작업한 구간과
+          완료한 구간은 구분하며, 과업 상태·체크리스트·단어장 학습 진도는
+          자동으로 변경하지 않습니다.
         </p>
       </section>
+      <section className="task-detail-section" aria-label="작업 이력">
+        <div className="language-task-heading">
+          <h2>
+            작업 이력 <small>{task.records?.length ?? 0}건</small>
+          </h2>
+          <span className="micro-note">최근 날짜 우선</span>
+        </div>
+        <div className="task-record-filters">
+          <label>
+            시작일
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => {
+                setFrom(e.target.value);
+                setLimit(20);
+              }}
+            />
+          </label>
+          <label>
+            종료일
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => {
+                setTo(e.target.value);
+                setLimit(20);
+              }}
+            />
+          </label>
+          <label>
+            이력 검색
+            <input
+              type="search"
+              placeholder="구간 또는 메모"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setLimit(20);
+              }}
+            />
+          </label>
+        </div>
+        {records.length ? (
+          <ul className="task-history-list">
+            {records.slice(0, limit).map((r) => (
+              <li key={r.id}>
+                <div>
+                  <time>{r.date}</time>
+                  <strong>{workLabel(task, r)}</strong>
+                  <span>
+                    {workModeLabels[r.mode]} ·{" "}
+                    {r.mode === "session"
+                      ? "시간 기록"
+                      : r.completed === false
+                        ? "작업 중"
+                        : "범위 완료"}
+                  </span>
+                  <span className="task-history-time">
+                    {r.minutes == null ? "시간 미입력" : `${r.minutes}분`}
+                  </span>
+                  {r.scope && r.mode !== "session" && <p>{r.scope}</p>}
+                  {r.note && <p>{r.note}</p>}
+                </div>
+                <button
+                  className="icon-button"
+                  aria-label={`${r.id} 작업 기록 수정`}
+                  onClick={() => setRecord(r)}
+                >
+                  <Pencil size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="task-empty-inline">표시할 작업 기록이 없습니다.</p>
+        )}
+        {records.length > limit && (
+          <button className="text-link" onClick={() => setLimit((n) => n + 20)}>
+            과거 기록 더 보기 ({records.length - limit}건)
+          </button>
+        )}
+      </section>
+
       {(p.mode === "steps" || task.items.length > 0) && (
         <section className="task-detail-section" aria-label="과업 단계">
           <div className="language-task-heading">
-            <h2>{p.mode === "steps" ? "단계별 진행" : "참고 체크 항목"}</h2>
+            <h2>세부사항 체크리스트</h2>
             <button className="secondary-button" onClick={() => setStep("new")}>
               <Plus size={14} />
               단계 추가
@@ -670,83 +878,6 @@ export function TaskDetailPage() {
             <p className="task-empty-inline">
               필요한 단계부터 자유롭게 추가하세요.
             </p>
-          )}
-        </section>
-      )}
-      {(p.mode !== "steps" || !!task.records?.length) && (
-        <section className="task-detail-section" aria-label="작업 이력">
-          <div className="language-task-heading">
-            <h2>
-              작업 이력 <small>{task.records?.length ?? 0}건</small>
-            </h2>
-            <span className="micro-note">최근 날짜 우선</span>
-          </div>
-          <div className="task-record-filters">
-            <label>
-              시작일
-              <input
-                type="date"
-                value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
-                  setLimit(20);
-                }}
-              />
-            </label>
-            <label>
-              종료일
-              <input
-                type="date"
-                value={to}
-                onChange={(e) => {
-                  setTo(e.target.value);
-                  setLimit(20);
-                }}
-              />
-            </label>
-            <label>
-              이력 검색
-              <input
-                type="search"
-                placeholder="구간 또는 메모"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  setLimit(20);
-                }}
-              />
-            </label>
-          </div>
-          {records.length ? (
-            <ul className="task-history-list">
-              {records.slice(0, limit).map((r) => (
-                <li key={r.id}>
-                  <div>
-                    <time>{r.date}</time>
-                    <strong>{workLabel(task, r)}</strong>
-                    <span>{trackingLabels[r.mode]}</span>
-                    {r.note && <p>{r.note}</p>}
-                  </div>
-                  <button
-                    className="icon-button"
-                    aria-label={`${r.id} 작업 기록 수정`}
-                    onClick={() => setRecord(r)}
-                  >
-                    <Pencil size={16} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="task-empty-inline">표시할 작업 기록이 없습니다.</p>
-          )}
-          {records.length > limit && (
-            <button
-              className="text-link"
-              onClick={() => setLimit((n) => n + 20)}
-            >
-              과거 기록 더 보기 ({records.length - limit}건)
-            </button>
           )}
         </section>
       )}

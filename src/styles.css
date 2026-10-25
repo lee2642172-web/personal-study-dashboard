@@ -5358,3 +5358,133 @@ footer > span:first-child {
     padding: 18px;
   }
 }
+
+/* Daily project work: elapsed time and completed scope are independent. */
+.task-time-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 18px;
+  border-top: 1px solid #edf1f7;
+  margin-top: 20px;
+  padding-top: 20px;
+}
+.task-time-summary > div {
+  min-width: 0;
+}
+.task-time-summary span,
+.task-time-summary small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.8;
+  color: #8a9bb4;
+}
+.task-time-summary strong {
+  display: block;
+  color: #526f9d;
+  font-size: 24px;
+  margin: 7px 0;
+  overflow-wrap: anywhere;
+}
+.v1-form .task-progress-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e1e8f3;
+  border-radius: 9px;
+  font-size: 13px;
+}
+.task-progress-check input {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.task-progress-check small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.8;
+  margin-top: 6px;
+  color: #8a9bb4;
+}
+.task-history-list .task-history-time {
+  color: #5d7aab;
+  font-weight: 600;
+}
+.record-time-total {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: #fff;
+  border: 1px solid #e1e8f3;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 26px;
+}
+.record-time-total > span {
+  color: #6c82a3;
+  font-size: 13px;
+}
+.record-time-total > strong {
+  font-size: 28px;
+  color: #5677b3;
+}
+.record-time-total > small {
+  color: #8d9db5;
+  font-size: 11px;
+}
+.activity-day {
+  margin-bottom: 26px;
+}
+.activity-day > header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+  color: #6983a9;
+  margin-bottom: 14px;
+}
+.activity-day > header h2 {
+  font-size: 15px;
+}
+.activity-day > header > span {
+  font-size: 13px;
+  font-weight: 600;
+}
+.activity-day > .log-list,
+.activity-work-record {
+  margin-bottom: 12px;
+}
+.activity-work-record {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid #e1e8f3;
+  border-radius: 11px;
+  padding: 20px;
+  background: #fff;
+}
+.activity-work-record > div {
+  min-width: 0;
+}
+.activity-work-record h3 {
+  color: #4a607e;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.activity-work-record p,
+.activity-work-record small {
+  color: #8a9bb4;
+  font-size: 11px;
+  line-height: 1.8;
+  margin-top: 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.activity-work-record small {
+  display: block;
+}
+.activity-work-record .text-link {
+  display: inline-flex;
+  font-size: 11px;
+  margin-top: 10px;
+}
