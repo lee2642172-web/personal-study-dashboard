@@ -1,4 +1,5 @@
 import { includeFinancialAccounting } from "./catalogs/financialAccounting.ts";
+import { validCalendarEvent } from "./calendar.ts";
 import { includeCostManagementAccounting } from "./catalogs/costManagementAccounting.ts";
 import { includeCustomsLawIntro } from "./catalogs/customsLawIntro.ts";
 import { includeDomesticConsumptionTax } from "./catalogs/domesticConsumptionTax.ts";
@@ -36,6 +37,13 @@ export function validData(v: unknown): v is DashboardData {
     !["materials", "logs", "goals", "tasks"].every((k) =>
       unique(v[k] as unknown[]),
     )
+  )
+    return false;
+  if (
+    v.events !== undefined &&
+    (!Array.isArray(v.events) ||
+      !unique(v.events) ||
+      !v.events.every(validCalendarEvent))
   )
     return false;
   if (

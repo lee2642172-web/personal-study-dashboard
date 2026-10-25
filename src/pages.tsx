@@ -1,12 +1,19 @@
+import {
+  StudyTimeSummary,
+  StudyTimeChart,
+  CustomsDashboard,
+  LanguageSnapshot,
+} from "./Dashboard";
+import { UpcomingEvents } from "./Calendar";
 import { LectureQuickCheck } from "./LectureQuickCheck";
 import { TodayLearning } from "./TodayLearning";
 import { EbsReviewPanel } from "./EbsReview";
 import { DayBook } from "./DayBook";
 import { isDayBook, getDayBook, dayRoundTotal } from "./dayLearning";
-import { localDate, type TimePeriod } from "./dates";
-import { learningTime } from "./studyTime";
+import { isDateString } from "./dates";
+import { useLocalDate } from "./useLocalDate";
 import { useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowUpRight,
   ArrowLeft,
@@ -47,7 +54,13 @@ import {
   type FieldId,
 } from "./model";
 
-function MaterialSummary({ material: m }: { material: Material }) {
+function MaterialSummary({
+  material: m,
+  showLatest = false,
+}: {
+  material: Material;
+  showLatest?: boolean;
+}) {
   const { data } = useData();
   const dayBook = isDayBook(m) ? getDayBook(data, m) : null;
   const displayRound =
@@ -81,6 +94,22 @@ function MaterialSummary({ material: m }: { material: Material }) {
       </div>
       <h3>{m.title}</h3>
       <p className="muted">{m.routine || fieldName(m.area)}</p>
+      {showLatest && m.kind === "units" && (
+        <p className="micro-note">
+          {displayRound}회독 · 최근 완료 Unit{" "}
+          {data.logs
+            .filter(
+              (l) =>
+                l.materialId === m.id &&
+                l.round === displayRound &&
+                l.completed &&
+                !l.voided &&
+                l.activity !== "system",
+            )
+            .at(-1)?.item ?? "기록 없음"}
+        </p>
+      )}
+
       {isTracked && m.total && p.entries.length > 0 ? (
         <Progress
           done={p.count}
@@ -269,156 +298,104 @@ function FieldCards({
 }
 export function Home() {
   const { data } = useData();
-  const [period, setPeriod] = useState<TimePeriod>("all");
-  const [selectedDate, setSelectedDate] = useState(localDate);
-  const {
-    study,
-    measured,
-    system,
-    studyMinutes: time,
-    hasStudyTime,
-  } = learningTime(data.logs, period, selectedDate);
-  const active = data.materials.filter((m) => m.status === "학습 중");
+  const today = useLocalDate();
+  const grammar = data.materials.filter((m) =>
+    ["basic", "intermediate"].includes(m.id),
+  );
+  const projects = data.tasks.filter(
+    (t) => t.kind === "프로젝트" && t.status !== "완료",
+  );
   return (
     <>
-      <TodayLearning />
+      <PageHeading
+        eyebrow="LEARNING OVERVIEW"
+        title="학습 상황판"
+        description="실제 학습시간과 강의 진도, 다음 일정을 한눈에 확인하세요."
+      />
+      <StudyTimeSummary />
+      <TodayLearning compact />
       <EbsReviewPanel compact />
-      <div className="v1-notice">
-        <Target size={20} />
-        <div>
-          <strong>영어와 관세사, 두 개의 중심.</strong>
-          <p>
-            OPIc AL은 다른 교재 회독과 독립적으로 병행합니다. 아직 기록하지 않은
-            진도와 시간은 비워둡니다.
-          </p>
-        </div>
+      <div className="dashboard-main-grid">
+        <StudyTimeChart />
+        <CustomsDashboard />
       </div>
-      <div className="home-time-filter">
-        <label>
-          시간 통계 기간
-          <select
-            aria-label="시간 통계 기간"
-            value={period}
-            onChange={(e) => setPeriod(e.target.value as TimePeriod)}
-          >
-            <option value="all">전체</option>
-            <option value="today">오늘</option>
-            <option value="week">이번 주</option>
-            <option value="month">이번 달</option>
-            <option value="date">날짜 선택</option>
-          </select>
-        </label>
-        {period === "date" && (
-          <label>
-            실제 학습일
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
-          </label>
-        )}
-        <p>
-          콘텐츠 발행일과 별도로, 실제 학습일 기준으로 집계합니다.
-          <br />
-          날짜·시간 미입력 이력은 보관하며 시간 합계에서 제외합니다.
-        </p>
-      </div>
-      <section className="stats">
-        <Stat
-          label={
-            period === "all"
-              ? "전체 학습 · 복습시간"
-              : "선택 기간 학습 · 복습시간"
-          }
-          value={hasStudyTime ? `${time}분` : "미기록"}
-          note={`날짜·시간 기록 ${measured.length}건 · EBS 기본 18분 포함`}
-        />
-        <Stat
-          label={period === "all" ? "전체 학습 이력" : "선택 기간 학습 이력"}
-          value={`${study.length}건`}
-          note={`날짜 미입력 ${study.filter((l) => !l.date).length}건 포함 · 사용자 제공 이력`}
-        />
-        <Stat
-          label="자료 정비시간"
-          value={
-            system.length
-              ? `${system.reduce((s, l) => s + (l.minutes ?? 0), 0)}분`
-              : "미기록"
-          }
-          note="실제 활동일 기준 · 학습시간과 별도 집계"
-        />
-        <Stat
-          label="진행 중 자료"
-          value={`${active.length}개`}
-          note="등록 자료 상태 기준 · 자동 할 일 생성 없음"
-        />
-      </section>
-      <Section title="외국어별 학습 현황" tag="LANGUAGES" link="/languages">
-        <FieldCards category="languages" />
-      </Section>
-      <Section
-        title="자격증별 학습 현황"
-        tag="CERTIFICATIONS"
-        link="/certifications"
-      >
-        <FieldCards category="certifications" />
-      </Section>
-      <Section title="목표 진행 상태" tag="INDEPENDENT GOALS" link="/goals">
-        <div className="v1-three-grid">
-          {data.goals.length ? (
-            data.goals.map((g) => <GoalCard key={g.id} goal={g} />)
-          ) : (
-            <Empty>등록한 목표가 없습니다.</Empty>
-          )}
-        </div>
-      </Section>
-      <Section title="진행 중인 학습 자료" tag="IN PROGRESS" link="/library">
-        <div className="v1-three-grid">
-          {active.length ? (
-            <>
-              {active.some(isEbsCourse) && (
-                <div className="ebs-home-group">
-                  <EbsCard />
-                </div>
-              )}
-              {active
-                .filter((m) => !isEbsCourse(m))
-                .map((m) => (
-                  <MaterialSummary key={m.id} material={m} />
-                ))}
-            </>
-          ) : (
-            <Empty>
-              학습 중인 자료가 없습니다. 보관함에서 상태를 변경할 수 있습니다.
-            </Empty>
-          )}
-        </div>
-      </Section>
-      <Section title="프로젝트성 과업" tag="PROJECTS" link="/tasks">
-        <div className="v1-two-grid">
-          {data.tasks
-            .filter((t) => t.kind === "프로젝트" && t.status !== "완료")
-            .map((t) => (
-              <TaskCard key={t.id} task={t} />
+      <Section title="영어 학습 현황" tag="LANGUAGES · MAIN" link="/english">
+        <div className="home-english-grid">
+          <EbsCard />
+          <div className="home-grammar-grid">
+            {grammar.map((m) => (
+              <MaterialSummary key={m.id} material={m} showLatest />
             ))}
-          {!data.tasks.some(
-            (t) => t.kind === "프로젝트" && t.status !== "완료",
-          ) && <Empty>진행할 프로젝트가 없습니다.</Empty>}
+          </div>
         </div>
       </Section>
-      <Section
-        title="최근 날짜가 있는 활동"
-        tag="RECENT ACTIVITY"
-        link="/records"
-      >
-        <LogList
-          logs={data.logs
-            .filter((l) => l.date && !l.voided)
-            .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
-            .slice(0, 5)}
-        />
-      </Section>
+      <div className="dashboard-secondary-grid">
+        <LanguageSnapshot />
+        <UpcomingEvents />
+      </div>
+      <div className="dashboard-secondary-grid">
+        <section
+          className="dashboard-panel home-projects"
+          aria-label="프로젝트 현황"
+        >
+          <div className="dashboard-panel-heading">
+            <h2>프로젝트 현황</h2>
+            <Link className="text-link" to="/tasks">
+              과업 보기 →
+            </Link>
+          </div>
+          {projects.length ? (
+            <ul className="snapshot-list">
+              {projects.slice(0, 2).map((t) => (
+                <li key={t.id}>
+                  <Link to="/tasks">
+                    <strong>{t.title}</strong>
+                    <span>
+                      {t.status}
+                      <small>
+                        {t.items.length
+                          ? `체크 항목 ${t.items.filter((i) => i.done).length} / ${t.items.length} 완료`
+                          : "체크 항목 없음"}
+                      </small>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="dashboard-empty">진행 중인 프로젝트가 없습니다.</p>
+          )}
+          <div className="dashboard-panel-footer">
+            <Link className="text-link" to="/goals">
+              시험 목표 관리 →
+            </Link>
+            <Link className="text-link" to="/library">
+              보관함 →
+            </Link>
+          </div>
+        </section>
+        <section className="dashboard-panel home-recent">
+          <div className="dashboard-panel-heading">
+            <h2>최근 학습 기록</h2>
+            <Link className="text-link" to="/records">
+              기록 전체 →
+            </Link>
+          </div>
+          <LogList
+            logs={data.logs
+              .filter(
+                (l) =>
+                  l.date &&
+                  isDateString(l.date) &&
+                  l.date <= today &&
+                  !l.voided &&
+                  l.activity !== "system",
+              )
+              .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
+              .slice(0, 3)}
+          />
+        </section>
+      </div>
     </>
   );
 }
@@ -667,7 +644,11 @@ export function MaterialPage() {
   const material = data.materials.find((m) => m.id === id);
   const [editing, setEditing] = useState(false);
   const [log, setLog] = useState<StudyLog | null>(null);
-  const [round, setRound] = useState(1);
+  const [materialParams] = useSearchParams();
+  const [round, setRound] = useState(() => {
+    const r = Number(materialParams.get("round"));
+    return Number.isSafeInteger(r) && r > 0 ? r : 1;
+  });
   const [month, setMonth] = useState("2026-04");
   const [page, setPage] = useState(0);
   const [lectureSearch, setLectureSearch] = useState("");

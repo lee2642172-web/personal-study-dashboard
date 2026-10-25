@@ -118,11 +118,25 @@ export type DayBookState = {
 };
 export type DashboardData = {
   version: 1;
+  events?: CalendarEvent[];
   dayBooks?: DayBookState[];
   materials: Material[];
   logs: StudyLog[];
   goals: Goal[];
   tasks: Task[];
+};
+export type CalendarEvent = {
+  id: string;
+  title: string;
+  date: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  category: "시험" | "시험 접수" | "성적 발표" | "학습" | "기타";
+  registrationPhase: "" | "start" | "deadline";
+  note: string;
+  area: FieldId | "";
+  goalId: string;
 };
 export const newId = () => crypto.randomUUID();
 export const today = () =>

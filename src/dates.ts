@@ -10,6 +10,18 @@ export function isDateString(value: string): boolean {
   );
 }
 export type TimePeriod = "all" | "today" | "week" | "month" | "date";
+/** Calendar arithmetic uses UTC noon so DST never changes the date interval. */
+export function shiftDate(date: string, days: number): string {
+  const next = new Date(`${date}T12:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next.toISOString().slice(0, 10);
+}
+export function dateDistance(from: string, to: string): number {
+  return Math.round(
+    (Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) /
+      86400000,
+  );
+}
 export function matchesActualDate(
   date: string | null,
   period: TimePeriod,
@@ -25,4 +37,24 @@ export function matchesActualDate(
   const monday = new Date(`${reference}T12:00:00`);
   monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
   return date >= localDate(monday) && date <= reference;
+}
+
+export function shiftMonth(month: string, delta: number): string {
+  const next = new Date(`${month}-01T12:00:00Z`);
+  next.setUTCMonth(next.getUTCMonth() + delta);
+  return next.toISOString().slice(0, 7);
+}
+export function calendarDates(month: string): (string | null)[] {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || !isDateString(`${month}-01`))
+    return [];
+  const first = new Date(`${month}-01T12:00:00Z`);
+  const offset = first.getUTCDay();
+  const last = new Date(first);
+  last.setUTCMonth(first.getUTCMonth() + 1, 0);
+  const length = last.getUTCDate();
+  return Array.from({ length: Math.ceil((offset + length) / 7) * 7 }, (_, i) =>
+    i < offset || i >= offset + length
+      ? null
+      : `${month}-${String(i - offset + 1).padStart(2, "0")}`,
+  );
 }

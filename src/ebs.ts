@@ -1,3 +1,4 @@
+export { calendarDates, shiftMonth } from "./dates.ts";
 import {
   episodes,
   type DashboardData,
@@ -120,22 +121,6 @@ export function defaultEbsDate(
       .at(-1) ?? EBS_START
   );
 }
-export function shiftMonth(month: string, delta: number) {
-  const [year, mon] = month.split("-").map(Number);
-  return new Date(Date.UTC(year, mon - 1 + delta, 1)).toISOString().slice(0, 7);
-}
-export function calendarDates(month: string): (string | null)[] {
-  const [year, mon] = month.split("-").map(Number);
-  if (!/^\d{4}-\d{2}$/.test(month) || mon < 1 || mon > 12) return [];
-  const length = new Date(Date.UTC(year, mon, 0)).getUTCDate();
-  const offset = new Date(Date.UTC(year, mon - 1, 1)).getUTCDay();
-  return Array.from({ length: Math.ceil((offset + length) / 7) * 7 }, (_, i) =>
-    i < offset || i >= offset + length
-      ? null
-      : `${month}-${String(i - offset + 1).padStart(2, "0")}`,
-  );
-}
-
 export const EBS_DEFAULT_MINUTES = 18;
 /** Idempotent first completion; intentional extra learning appends a distinct record. */
 export function recordEbsLearning(

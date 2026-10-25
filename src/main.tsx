@@ -11,6 +11,7 @@ import {
 } from "react-router-dom";
 import {
   LayoutGrid,
+  CalendarDays,
   Globe2,
   GraduationCap,
   Library,
@@ -24,6 +25,7 @@ import {
 } from "lucide-react";
 import LegacyApp from "./LegacyApp";
 import { EbsPage } from "./Ebs";
+import { CalendarPage } from "./Calendar";
 import { DataProvider, useData } from "./state";
 import {
   Home,
@@ -41,6 +43,7 @@ import { fieldName } from "./model";
 import "./styles.css";
 const navigation = [
   { path: "/", label: "HOME", icon: LayoutGrid },
+  { path: "/calendar", label: "캘린더", icon: CalendarDays },
   { path: "/languages", label: "외국어", icon: Globe2 },
   { path: "/certifications", label: "자격증", icon: GraduationCap },
   { path: "/library", label: "보관함", icon: Library },
@@ -142,6 +145,7 @@ function App() {
           )}
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/english" element={<English />} />
             <Route path="/english/ebs" element={<EbsPage />} />
             <Route

@@ -24,36 +24,45 @@ function itemLabel(log: StudyLog, material?: Material): string {
   return log.initialLearning ? item : `${item} · ${log.round}회독`;
 }
 
-export function TodayLearning() {
+export function TodayLearning({ compact = false }: { compact?: boolean }) {
   const { data } = useData();
   const date = useLocalDate();
   const today = learningTime(data.logs, "today", date, date);
   const entries = [...today.study].reverse();
   const unknown = entries.filter((log) => log.minutes === null).length;
   return (
-    <section className="today-learning" aria-labelledby="today-learning-title">
+    <section
+      className={`today-learning ${compact ? "is-compact" : ""}`}
+      aria-labelledby="today-learning-title"
+    >
       <header className="today-learning-heading">
         <div>
           <p className="eyebrow">
             TODAY · <time dateTime={date}>{date.replaceAll("-", ".")}</time>
           </p>
-          <h1 id="today-learning-title">오늘의 학습</h1>
+          {compact ? (
+            <h2 id="today-learning-title">오늘의 학습</h2>
+          ) : (
+            <h1 id="today-learning-title">오늘의 학습</h1>
+          )}
           <p className="today-learning-count">
             학습·복습 기록 {entries.length}건
           </p>
         </div>
-        <div className="today-learning-total" aria-label="오늘 총 학습시간">
-          <span>
-            <Clock3 size={15} />총 학습시간
-          </span>
-          <strong>
-            {today.hasStudyTime
-              ? `${today.studyMinutes}분`
-              : entries.length
-                ? "시간 미입력"
-                : "미기록"}
-          </strong>
-        </div>
+        {!compact && (
+          <div className="today-learning-total" aria-label="오늘 총 학습시간">
+            <span>
+              <Clock3 size={15} />총 학습시간
+            </span>
+            <strong>
+              {today.hasStudyTime
+                ? `${today.studyMinutes}분`
+                : entries.length
+                  ? "시간 미입력"
+                  : "미기록"}
+            </strong>
+          </div>
+        )}
       </header>
       {entries.length ? (
         <ul
