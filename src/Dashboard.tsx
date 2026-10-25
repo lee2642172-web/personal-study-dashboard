@@ -20,7 +20,7 @@ export function StudyTimeSummary() {
     <section className="study-time-summary" aria-label="학습시간 요약">
       {[
         ["오늘 학습시간", summary.today, today.replaceAll("-", ".")],
-        ["최근 7일 학습시간", summary.week, "오늘 포함 · 최근 7일"],
+        ["이번 주 학습시간", summary.week, "월요일 ~ 일요일"],
         [
           "이번 달 학습시간",
           summary.month,
@@ -80,7 +80,7 @@ export function StudyTimeChart() {
             value={period}
             onChange={(e) => setPeriod(e.target.value as typeof period)}
           >
-            <option value="7">최근 7일</option>
+            <option value="7">이번 주 (월~일)</option>
             <option value="30">최근 30일</option>
             <option value="month">월별</option>
           </select>

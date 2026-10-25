@@ -16,6 +16,11 @@ export function shiftDate(date: string, days: number): string {
   next.setUTCDate(next.getUTCDate() + days);
   return next.toISOString().slice(0, 10);
 }
+/** Monday of the week containing the supplied browser-local calendar date. */
+export function weekStart(date: string): string {
+  const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+  return shiftDate(date, -((weekday + 6) % 7));
+}
 export function dateDistance(from: string, to: string): number {
   return Math.round(
     (Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) /
@@ -34,9 +39,7 @@ export function matchesActualDate(
   if (period === "date") return date === selected;
   if (period === "month")
     return date.slice(0, 7) === reference.slice(0, 7) && date <= reference;
-  const monday = new Date(`${reference}T12:00:00`);
-  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
-  return date >= localDate(monday) && date <= reference;
+  return date >= weekStart(reference) && date <= reference;
 }
 
 export function shiftMonth(month: string, delta: number): string {

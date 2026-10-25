@@ -12,6 +12,7 @@ import {
 } from "../src/lectureLearning.ts";
 import { recordEbsReview } from "../src/ebsReview.ts";
 import { recordEbsLearning } from "../src/ebs.ts";
+import { weekStart } from "../src/dates.ts";
 const ref = "2026-10-21";
 const fixture = () => {
   const template = createInitialData().logs[0];
@@ -39,23 +40,25 @@ const fixture = () => {
     log("bad-date", "2026-10-32", 90),
   ];
 };
-test("HOME summaries use actual dates and a rolling seven days, excluding cancelled, unknown and system time", () => {
+test("HOME summaries and weekly charts use Monday–Sunday, excluding previous-week, future, cancelled, unknown and system time", () => {
   const logs = fixture();
   assert.deepEqual(studySummary(logs, ref), {
     today: 42,
-    week: 72,
+    week: 62,
     month: 172,
   });
   assert.deepEqual(studySummary([], ref), { today: 0, week: 0, month: 0 });
   const series = studySeries(logs, ref, "7");
-  assert.equal(series[0].date, "2026-10-15");
-  assert.equal(series.at(-1).date, ref);
+  assert.equal(series[0].date, "2026-10-19");
+  assert.equal(series.at(-1).date, "2026-10-25");
   assert.deepEqual(
     series.map((p) => p.minutes),
-    [10, 0, 0, 0, 0, 20, 42],
+    [0, 20, 42, 0, 0, 0, 0],
   );
   assert.equal(
-    studySeries(logs, ref, "7", undefined, "customs").at(-1).minutes,
+    studySeries(logs, ref, "7", undefined, "customs").find(
+      (p) => p.date === ref,
+    ).minutes,
     7,
   );
   assert.ok(
@@ -63,6 +66,40 @@ test("HOME summaries use actual dates and a rolling seven days, excluding cancel
       (p) => p.minutes === 0,
     ),
   );
+});
+test("week boundaries reset on Monday and remain correct on Sunday, across months, years and leap days", () => {
+  assert.equal(weekStart("2026-10-25"), "2026-10-19");
+  assert.equal(weekStart("2026-10-26"), "2026-10-26");
+  assert.equal(weekStart("2028-02-29"), "2028-02-28");
+  const logs = [
+    ["2026-12-27", 100],
+    ["2026-12-28", 10],
+    ["2026-12-31", 20],
+    ["2027-01-01", 30],
+    ["2027-01-02", 40],
+    ["2027-01-03", 50],
+    ["2027-01-04", 5],
+  ].map(([date, minutes]) => ({
+    id: date,
+    date,
+    minutes,
+    activity: "study",
+    area: "english",
+  }));
+  assert.deepEqual(studySummary(logs, "2027-01-01"), {
+    today: 30,
+    week: 60,
+    month: 30,
+  });
+  const week = studySeries(logs, "2027-01-01", "7");
+  assert.equal(week[0].date, "2026-12-28");
+  assert.equal(week.at(-1).date, "2027-01-03");
+  assert.deepEqual(
+    week.map((p) => p.minutes),
+    [10, 0, 0, 20, 30, 0, 0],
+  );
+  assert.equal(studySummary(logs, "2027-01-03").week, 150);
+  assert.equal(studySummary(logs, "2027-01-04").week, 5);
 });
 test("chart supports thirty dates, full calendar months, leap years and zeroes for absent/future dates", () => {
   const logs = fixture();

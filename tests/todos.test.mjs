@@ -91,7 +91,7 @@ test("title-only registration adds an empty pending todo without converting lega
   assert.equal(find(second, "buy-again").note, "추가 메모");
 });
 
-test("completion combines actual dates with study time across today, rolling seven days, months and all chart periods", () => {
+test("completion combines actual dates with study time across today, Monday–Sunday weeks, months and all chart periods", () => {
   let d = fixture();
   d = completed(d, "collision", "2026-11-02", 12, { dueDate: "2026-12-20" });
   d = completed(d, "unmeasured", "2026-11-02");
@@ -100,15 +100,16 @@ test("completion combines actual dates with study time across today, rolling sev
   d = completed(d, "outside-week", "2026-10-26", 100);
   d = completed(d, "future", "2026-11-03", 50);
   assert.equal(find(d, "unmeasured").completion.minutes, 0);
-  assert.deepEqual(summary(d), { today: 30, week: 62, month: 35 });
+  assert.deepEqual(summary(d), { today: 30, week: 30, month: 35 });
   const entries = dashboardTimeEntries(d),
     seven = studySeries(entries, "2026-11-02", "7");
-  assert.equal(seven[0].date, "2026-10-27");
-  assert.equal(seven[0].minutes, 7);
-  assert.equal(seven.at(-1).minutes, 30);
+  assert.equal(seven[0].date, "2026-11-02");
+  assert.equal(seven[0].minutes, 30);
+  assert.equal(seven.at(-1).date, "2026-11-08");
+  assert.equal(seven.at(-1).minutes, 0);
   assert.equal(
     seven.reduce((n, p) => n + p.minutes, 0),
-    62,
+    30,
   );
   assert.equal(
     studySeries(entries, "2026-11-02", "30").reduce((n, p) => n + p.minutes, 0),
@@ -122,8 +123,7 @@ test("completion combines actual dates with study time across today, rolling sev
     35,
   );
   assert.equal(
-    studySeries(entries, "2026-11-02", "7", undefined, "english").at(-1)
-      .minutes,
+    studySeries(entries, "2026-11-02", "7", undefined, "english")[0].minutes,
     18,
   );
   assert.ok(
@@ -190,7 +190,7 @@ test("editing completion date/time and deleting completed items immediately reca
     },
     "2026-11-02",
   );
-  assert.deepEqual(summary(d), { today: 22, week: 42, month: 22 });
+  assert.deepEqual(summary(d), { today: 22, week: 22, month: 22 });
   assert.equal(summary(d, "2026-10-26").today, 22);
   d = editTodo(
     d,

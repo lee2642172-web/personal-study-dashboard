@@ -1,5 +1,5 @@
 import { type DashboardData, type StudyLog, type FieldId } from "./model.ts";
-import { isDateString, shiftDate, calendarDates } from "./dates.ts";
+import { isDateString, shiftDate, calendarDates, weekStart } from "./dates.ts";
 import { lectureCompleted } from "./lectureLearning.ts";
 import { completedTodos } from "./todos.ts";
 
@@ -54,7 +54,7 @@ export function studySummary(logs: TimeEntry[], asOf: string) {
     );
   return {
     today: sum(asOf),
-    week: sum(shiftDate(asOf, -6)),
+    week: sum(weekStart(asOf)),
     month: sum(`${asOf.slice(0, 7)}-01`),
   };
 }
@@ -68,7 +68,9 @@ export function studySeries(
   const start =
     period === "month"
       ? `${month}-01`
-      : shiftDate(asOf, period === "7" ? -6 : -29);
+      : period === "7"
+        ? weekStart(asOf)
+        : shiftDate(asOf, -29);
   if (!isDateString(start)) return [];
   const count =
     period === "month"
