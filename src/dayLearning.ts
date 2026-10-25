@@ -273,6 +273,7 @@ export function recordDayReview(
   day: number,
   logId: string,
   date: string,
+  minutes: number | null = null,
 ): DashboardData {
   const m = data.materials.find((m) => m.id === id);
   if (
@@ -287,7 +288,12 @@ export function recordDayReview(
     data.logs.some((l) => l.id === logId)
   )
     return data;
-  if (!logId || !isDateString(date)) return data;
+  if (
+    !logId ||
+    !isDateString(date) ||
+    (minutes !== null && (!Number.isFinite(minutes) || minutes < 0))
+  )
+    return data;
   const log: StudyLog = {
     id: logId,
     area: m.area,
@@ -295,7 +301,7 @@ export function recordDayReview(
     item: String(day),
     round,
     date,
-    minutes: null,
+    minutes,
     activity: "review",
     note: "",
     topic: "",

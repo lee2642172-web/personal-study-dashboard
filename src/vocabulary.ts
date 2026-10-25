@@ -144,15 +144,20 @@ export function includeVocabularies(data: DashboardData): DashboardData {
       vocabularies: [...(result.vocabularies ?? []), book],
     };
   }
-  return connectChineseDayLearning(includeChineseDayPlan(result));
+  return (["chinese", "spanish"] as const).reduce(
+    (next, area) => connectVocabularyDayLearning(next, area),
+    includeChineseDayPlan(result),
+  );
 }
 /** A source/reference inventory must not prevent access to the separate Day study screen. */
-function connectChineseDayLearning(data: DashboardData): DashboardData {
-  const book = data.vocabularies?.find((b) => b.area === "chinese");
+function connectVocabularyDayLearning(
+  data: DashboardData,
+  area: "chinese" | "spanish",
+): DashboardData {
+  const book = data.vocabularies?.find((b) => b.area === area);
   if (!book) return data;
   const linked = data.materials.find(
-    (m) =>
-      m.id === book.materialId && m.area === "chinese" && m.kind === "days",
+    (m) => m.id === book.materialId && m.area === area && m.kind === "days",
   );
   if (linked) {
     if (linked.vocabularyId === book.id) return data;
@@ -164,24 +169,24 @@ function connectChineseDayLearning(data: DashboardData): DashboardData {
     };
   }
   const candidates = data.materials.filter(
-    (m) => m.area === "chinese" && m.kind === "days",
+    (m) => m.area === area && m.kind === "days",
   );
   // Never guess which existing book owns a set of study records.
   if (candidates.length > 1) return data;
   let material = candidates[0];
   if (!material) {
-    let id = "chinese-vocabulary-days";
+    let id = `${area}-vocabulary-days`;
     while (data.materials.some((m) => m.id === id)) id += "-book";
     material = {
       id,
-      area: "chinese",
-      title: "중국어 단어장",
+      area,
+      title: vocabularyPolicy[area].title,
       kind: "days",
       status: "보관 중",
       total: null,
       targetPasses: null,
       vocabularyId: book.id,
-      note: chineseDayNote,
+      note: "연속된 Day 번호로 학습 날짜·시간과 회독·복습 기록을 관리합니다. Excel 정리 작업은 별도 장기 과업에서 관리합니다.",
       routine: "Day별 학습·복습",
       schedule: [],
       startDate: "",
@@ -189,7 +194,7 @@ function connectChineseDayLearning(data: DashboardData): DashboardData {
     };
   }
   const last = Math.max(
-    book.dayPlan?.organizedThroughDay ?? vocabularyPolicy.chinese.lastDay,
+    book.dayPlan?.organizedThroughDay ?? vocabularyPolicy[area].lastDay,
     book.baselineLastDay ?? 0,
     dayEvidence(data, material.id),
     ...book.entries.filter((e) => e.status === "imported").map((e) => e.day!),
@@ -242,7 +247,7 @@ function includeChineseDayPlan(data: DashboardData): DashboardData {
   const last = Math.max(
     310,
     old.baselineLastDay ?? 0,
-    vocabularyEvidence(data, old),
+    material ? dayEvidence(data, material.id) : 0,
   );
   const canExpand = !!material && positive(last);
   const book: VocabularyBook = {
@@ -276,7 +281,25 @@ function includeChineseDayPlan(data: DashboardData): DashboardData {
       ));
   const initialized =
     material && canExpand && hasHistory && last > (material.total ?? 0)
-      ? ensureDayBook(data, material.id)
+      ? ensureDayBook(
+          {
+            ...data,
+            materials: data.materials.map((m) =>
+              m.id === material.id
+                ? {
+                    ...m,
+                    total:
+                      Math.max(
+                        m.total ?? 0,
+                        data.dayBooks?.find((b) => b.materialId === m.id)
+                          ?.totalDays ?? 0,
+                      ) || null,
+                  }
+                : m,
+            ),
+          },
+          material.id,
+        )
       : data;
   let next: DashboardData = {
     ...initialized,

@@ -22,7 +22,7 @@ import {
   fieldName,
 } from "./model";
 import { DayLearningForm } from "./DayLearningForm";
-import { localDate } from "./dates";
+import { localDate, isDateString } from "./dates";
 import {
   getDayBook,
   ensureDayBook,
@@ -47,6 +47,10 @@ export function DayBook({ material: m }: { material: Material }) {
   const [newLearning, setNewLearning] = useState<"append" | "current" | null>(
     null,
   );
+  const numberedVocabulary =
+    !!m.vocabularyId && ["chinese", "spanish"].includes(m.area);
+  const [reviewDate, setReviewDate] = useState(localDate);
+  const [reviewMinutes, setReviewMinutes] = useState("");
   useEffect(() => {
     update((d) => ensureDayBook(d, m.id));
   }, [m.id, m.total, update]);
@@ -65,7 +69,7 @@ export function DayBook({ material: m }: { material: Material }) {
         />
         {m.vocabularyId ? (
           <Link className="primary-button" to={`/vocabulary/${m.vocabularyId}`}>
-            실제 마지막 Day 확인 · 단어 편입 관리
+            Day 번호 설정
           </Link>
         ) : (
           <button className="primary-button" onClick={() => setEditing(true)}>
@@ -102,11 +106,6 @@ export function DayBook({ material: m }: { material: Material }) {
   ).length;
   const complete =
     day <= scope && dayCompleted(data.logs, m.id, book.activeRound, day);
-  const vocabularyWords =
-    data.vocabularies
-      ?.find((b) => b.id === m.vocabularyId)
-      ?.entries.filter((e) => e.status === "imported" && e.day === day)
-      .sort((a, b) => a.position! - b.position!) ?? [];
   const last = [...data.logs]
     .reverse()
     .find(
@@ -127,10 +126,28 @@ export function DayBook({ material: m }: { material: Material }) {
   }
   function review() {
     const id = newId();
-    const date = localDate();
-    update((d) => recordDayReview(d, m.id, book.activeRound, day, id, date));
+    const date = numberedVocabulary ? reviewDate : localDate();
+    const minutes =
+      numberedVocabulary && reviewMinutes.trim() !== ""
+        ? Number(reviewMinutes)
+        : null;
+    if (
+      !isDateString(date) ||
+      date > localDate() ||
+      (minutes !== null && (!Number.isFinite(minutes) || minutes < 0))
+    ) {
+      setError(
+        "실제 학습 날짜와 0 이상의 학습시간을 입력해 주세요. 미래 날짜는 기록할 수 없습니다.",
+      );
+      return;
+    }
+    setError("");
+    update((d) =>
+      recordDayReview(d, m.id, book.activeRound, day, id, date, minutes),
+    );
+    setReviewMinutes("");
     setNotice(
-      `Day ${day} 복습을 기록했습니다. 선택한 Day는 그대로 유지됩니다.`,
+      `Day ${day} · ${date}${minutes === null ? " · 시간 미입력" : ` · ${minutes}분`} 복습을 기록했습니다. 선택한 Day는 그대로 유지됩니다.`,
     );
   }
   function cancel(entry: StudyLog) {
@@ -184,7 +201,7 @@ export function DayBook({ material: m }: { material: Material }) {
                 className="secondary-button"
                 to={`/vocabulary/${m.vocabularyId}`}
               >
-                새 Day 입력
+                Day 추가·관리
               </Link>
             ) : (
               <button
@@ -225,6 +242,33 @@ export function DayBook({ material: m }: { material: Material }) {
                 ? "이 회독에서 복습 완료"
                 : "이 회독에서 기록 전"}
           </span>
+          {numberedVocabulary && (
+            <div className="daybook-record-inputs">
+              <label>
+                학습 날짜
+                <input
+                  aria-label="학습 날짜"
+                  type="date"
+                  required
+                  max={localDate()}
+                  value={reviewDate}
+                  onChange={(e) => setReviewDate(e.target.value)}
+                />
+              </label>
+              <label>
+                학습시간 (분, 선택)
+                <input
+                  aria-label="학습시간 (분)"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={reviewMinutes}
+                  onChange={(e) => setReviewMinutes(e.target.value)}
+                  placeholder="미입력"
+                />
+              </label>
+            </div>
+          )}
           <button
             className="primary-button daybook-review-button"
             onClick={review}
@@ -297,7 +341,9 @@ export function DayBook({ material: m }: { material: Material }) {
         )}
         <p className="daybook-notice" role="status" aria-live="polite">
           {notice ||
-            "오늘 날짜로 기록합니다. 기록 후에도 현재 Day를 유지합니다."}
+            (numberedVocabulary
+              ? "선택한 날짜와 시간으로 기록합니다. 기록 후에도 현재 Day를 유지합니다."
+              : "오늘 날짜로 기록합니다. 기록 후에도 현재 Day를 유지합니다.")}
         </p>
         <details className="daybook-history">
           <summary>이 Day의 전체 학습 기록 {entries.length}건</summary>
@@ -347,22 +393,6 @@ export function DayBook({ material: m }: { material: Material }) {
           )}
         </details>
       </section>
-      {vocabularyWords.length > 0 && (
-        <details className="vocabulary-day-words">
-          <summary>
-            Day {day} 등록 단어 {vocabularyWords.length}개
-          </summary>
-          <ol>
-            {vocabularyWords.map((word) => (
-              <li key={word.id}>
-                <strong>{word.term}</strong>
-                <span>{word.meaning}</span>
-                {word.note && <small>{word.note}</small>}
-              </li>
-            ))}
-          </ol>
-        </details>
-      )}
       <details className="daybook-info">
         <summary>회독 현황 · 자료 설정</summary>
         <Progress
@@ -430,10 +460,10 @@ export function DayBook({ material: m }: { material: Material }) {
             ))}
           </select>
         </label>
-        <p>{m.note}</p>
+        {!numberedVocabulary && <p>{m.note}</p>}
         <p>
-          실제 예문은 기존 Excel 자료를 참고하세요. 학습시간은 기록 수정에서
-          입력할 수 있습니다.
+          단어 내용은 기존 Excel 자료를 참고하세요. 학습 날짜와 시간은 기록
+          수정에서도 변경할 수 있습니다.
         </p>
         <p>
           목표 {m.targetPasses ?? "미정"}회독 · 목표 이후에도 회독을 계속 추가할

@@ -9,6 +9,10 @@ import {
 import { lectureMinutes } from "./lectureLearning";
 import { nextEbsReviewDate } from "./ebsReview";
 import { isDayBook, saveDayAwareLog } from "./dayLearning";
+import {
+  registeredVocabularyLastDay,
+  extendVocabularyDays,
+} from "./vocabularyDays";
 import { localDate } from "./dates";
 import { isEbsCourse, scheduled, validDate } from "./ebs";
 import { useState, type FormEvent } from "react";
@@ -58,30 +62,30 @@ export function MaterialForm({
       (b) => b.id === m.vocabularyId && b.materialId === m.id,
     );
     if (vocabulary) {
-      const minimum = Math.max(
-        vocabulary.baselineLastDay ?? 0,
-        0,
-        ...vocabulary.entries
-          .filter((e) => e.status === "imported")
-          .map((e) => e.day!),
-      );
+      const minimum = registeredVocabularyLastDay(data, vocabulary) ?? 0;
       if (
         m.kind !== "days" ||
         m.area !== vocabulary.area ||
         (m.total ?? 0) < minimum
       ) {
         setError(
-          `연결된 단어장은 Day 단위와 언어를 유지하고, 기존·편입 Day ${minimum}보다 전체량을 줄일 수 없습니다.`,
+          `연결된 단어장은 Day 단위와 언어를 유지하고, 현재 마지막 Day ${minimum}보다 전체량을 줄일 수 없습니다.`,
         );
         return;
       }
     }
-    update((d) => ({
-      ...d,
-      materials: d.materials.some((x) => x.id === m.id)
-        ? d.materials.map((x) => (x.id === m.id ? m : x))
-        : [...d.materials, m],
-    }));
+    update((d) => {
+      const next =
+        vocabulary && m.total !== null
+          ? extendVocabularyDays(d, vocabulary.id, m.total)
+          : d;
+      return {
+        ...next,
+        materials: next.materials.some((x) => x.id === m.id)
+          ? next.materials.map((x) => (x.id === m.id ? m : x))
+          : [...next.materials, m],
+      };
+    });
     onClose();
   }
   return (

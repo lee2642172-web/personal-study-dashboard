@@ -550,7 +550,7 @@ export function TaskDetailPage() {
             className="text-link vocabulary-task-back"
             to={`/vocabulary/${b.id}`}
           >
-            단어 원본·중복 검토·Day 편입 관리 →
+            단어장 Day 번호 관리 →
           </Link>
         ))}
       <section className="task-detail-summary" aria-label="과업 진행 상황">
