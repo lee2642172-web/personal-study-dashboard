@@ -5193,3 +5193,173 @@ footer > span:first-child {
     flex: 1;
   }
 }
+
+/* Compact HOME todo panel uses the same completion records as the task menu. */
+.home-daily-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 20px;
+}
+.home-daily-grid > .today-learning {
+  margin-bottom: 0;
+  min-width: 0;
+}
+.home-todos {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #dce6f7;
+  border-radius: 16px;
+  background: #fff;
+}
+.home-todos-heading,
+.home-todos-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.home-todos-heading {
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.home-todos-heading h2 {
+  color: #405573;
+  font-size: 16px;
+}
+.home-todos-heading span,
+.home-todos-heading > .text-link {
+  font-size: 10px;
+  color: #91a1b8;
+}
+.home-todos-heading > .text-link {
+  white-space: nowrap;
+}
+.home-todos-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.home-todo-item {
+  padding: 8px 0;
+  border-top: 1px solid #edf1f7;
+}
+.home-todo-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 66px;
+  gap: 6px;
+  align-items: center;
+}
+.home-todo-check {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  cursor: pointer;
+}
+.home-todo-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: #6284c6;
+  cursor: pointer;
+}
+.home-todo-copy {
+  min-width: 0;
+}
+.home-todo-copy > a {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: #506886;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.home-todo-copy > small {
+  display: block;
+  color: #94a4ba;
+  font-size: 9px;
+  margin-top: 3px;
+}
+.home-todo-copy > .todo-overdue {
+  color: #b38b59;
+}
+.home-todo-minutes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #94a4ba;
+  font-size: 10px;
+}
+.dashboard-v1 .home-todo-minutes input {
+  width: 48px;
+  min-height: 36px;
+  margin: 0;
+  padding: 6px;
+  font-size: 11px;
+  text-align: right;
+  appearance: textfield;
+}
+.home-todo-minutes input::-webkit-inner-spin-button,
+.home-todo-minutes input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+.home-todos-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #edf1f7;
+  margin-top: 5px;
+  padding-top: 10px;
+}
+.home-todos-footer > small,
+.home-todos-footer > .text-link {
+  font-size: 9px;
+  color: #94a4ba;
+  line-height: 1.8;
+}
+.home-todos-empty {
+  padding: 12px 0 16px;
+  color: #94a4ba;
+  font-size: 12px;
+}
+.home-todos-empty .text-link {
+  display: inline-flex;
+  margin-top: 10px;
+  font-size: 11px;
+}
+.home-todos-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.home-todos-feedback p {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  margin: 10px 0 0;
+  color: #6486a9;
+  font-size: 10px;
+  line-height: 1.8;
+}
+.home-todos-feedback p:empty {
+  margin: 0;
+}
+.home-todos-feedback > button {
+  font-size: 10px;
+  margin-top: 10px;
+}
+@media (max-width: 1050px) {
+  .home-daily-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 650px) {
+  .home-todos {
+    padding: 18px;
+  }
+}

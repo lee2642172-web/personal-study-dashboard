@@ -7,6 +7,7 @@ import {
 } from "./Dashboard";
 import { LectureQuickCheck } from "./LectureQuickCheck";
 import { TodayLearning } from "./TodayLearning";
+import { HomeTodos } from "./HomeTodos";
 import { EbsReviewPanel } from "./EbsReview";
 import { DayBook } from "./DayBook";
 import { isDayBook, getDayBook, dayRoundTotal } from "./dayLearning";
@@ -248,7 +249,10 @@ export function Home() {
         description="학습과 완료한 할 일의 누적시간, 강의 진도를 한눈에 확인하세요."
       />
       <StudyTimeSummary />
-      <TodayLearning compact />
+      <div className="home-daily-grid">
+        <TodayLearning compact />
+        <HomeTodos />
+      </div>
       <EbsReviewPanel compact />
       <div className="dashboard-main-grid">
         <StudyTimeChart />
