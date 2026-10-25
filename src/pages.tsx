@@ -245,7 +245,7 @@ export function Home() {
       <PageHeading
         eyebrow="LEARNING OVERVIEW"
         title="학습 상황판"
-        description="실제 학습시간과 강의 진도를 한눈에 확인하세요."
+        description="학습과 완료한 할 일의 누적시간, 강의 진도를 한눈에 확인하세요."
       />
       <StudyTimeSummary />
       <TodayLearning compact />

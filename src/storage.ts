@@ -1,4 +1,5 @@
 import { includeVocabularies, validVocabulary } from "./vocabulary.ts";
+import { validTodo } from "./todos.ts";
 import { normalizeVocabularyDayRanges } from "./vocabularyDays.ts";
 import { includeFinancialAccounting } from "./catalogs/financialAccounting.ts";
 import { validTask } from "./taskWork.ts";
@@ -40,6 +41,11 @@ export function validData(v: unknown): v is DashboardData {
     !["materials", "logs", "goals", "tasks"].every((k) =>
       unique(v[k] as unknown[]),
     )
+  )
+    return false;
+  if (
+    v.todos !== undefined &&
+    (!Array.isArray(v.todos) || !unique(v.todos) || !v.todos.every(validTodo))
   )
     return false;
   if (

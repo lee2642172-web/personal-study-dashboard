@@ -106,6 +106,13 @@ export type Task = {
   tracking?: TaskTracking;
   records?: TaskWorkRecord[];
 };
+export type TodoItem = {
+  id: string;
+  title: string;
+  dueDate: string;
+  note: string;
+  completion: { date: string; minutes: number } | null;
+};
 export type TaskStep = {
   id: string;
   title: string;
@@ -151,6 +158,7 @@ export type DashboardData = {
   logs: StudyLog[];
   goals: Goal[];
   tasks: Task[];
+  todos?: TodoItem[];
 };
 export type VocabularySheet = {
   id: string;

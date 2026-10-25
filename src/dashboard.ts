@@ -1,9 +1,33 @@
 import { type DashboardData, type StudyLog, type FieldId } from "./model.ts";
 import { isDateString, shiftDate, calendarDates } from "./dates.ts";
 import { lectureCompleted } from "./lectureLearning.ts";
+import { completedTodos } from "./todos.ts";
+
+type TimeEntry = Pick<StudyLog, "id" | "date" | "minutes"> & {
+  activity: StudyLog["activity"] | "todo";
+  area?: FieldId;
+  voided?: boolean;
+};
+
+/** Projection only: completion time has one persisted owner and never becomes a duplicate study log. */
+export function dashboardTimeEntries(data: DashboardData): TimeEntry[] {
+  return [
+    ...data.logs.map((log) => ({ ...log, id: `study:${log.id}` })),
+    ...completedTodos(data.todos).map((todo) => ({
+      id: `todo:${todo.id}`,
+      date: todo.completion!.date,
+      minutes: todo.completion!.minutes,
+      activity: "todo" as const,
+    })),
+  ];
+}
 
 /** Count actual sessions once by ID; never deduplicate intentional replays by episode. */
-export function timedStudyLogs(logs: StudyLog[], asOf: string, area?: FieldId) {
+export function timedStudyLogs(
+  logs: TimeEntry[],
+  asOf: string,
+  area?: FieldId,
+) {
   const seen = new Set<string>();
   return logs.filter((log) => {
     if (seen.has(log.id)) return false;
@@ -21,7 +45,7 @@ export function timedStudyLogs(logs: StudyLog[], asOf: string, area?: FieldId) {
     );
   });
 }
-export function studySummary(logs: StudyLog[], asOf: string) {
+export function studySummary(logs: TimeEntry[], asOf: string) {
   const measured = timedStudyLogs(logs, asOf);
   const sum = (start: string) =>
     measured.reduce(
@@ -35,7 +59,7 @@ export function studySummary(logs: StudyLog[], asOf: string) {
   };
 }
 export function studySeries(
-  logs: StudyLog[],
+  logs: TimeEntry[],
   asOf: string,
   period: "7" | "30" | "month",
   month = asOf.slice(0, 7),

@@ -19,6 +19,7 @@ import {
 } from "./model";
 import { PageHeading, Progress, Dialog, Empty } from "./ui";
 import { TaskForm } from "./forms";
+import { TodoBoard } from "./Todos";
 import {
   taskStatuses,
   trackingLabels,
@@ -192,79 +193,89 @@ export function TaskBoard() {
       <PageHeading
         eyebrow="TASKS & PROJECTS"
         title="과업"
-        description="장기 과업의 실제 작업 구간·수량·회독·단계를 기록하세요."
-        action={
+        description="일반 할 일은 간단히 완료하고, 장기 과업은 진도를 기록하세요."
+      />
+      <TodoBoard />
+      <section className="long-task-board" aria-label="장기 과업">
+        <div className="language-task-heading">
+          <div className="long-task-heading">
+            <h2>장기 과업</h2>
+            <p>
+              Excel 단어장 정리·수정 등 지속적인 작업의 구간·수량·회독·단계를
+              관리합니다.
+            </p>
+          </div>
           <button className="primary-button" onClick={() => setAdding(true)}>
             <Plus size={16} />
-            과업 추가
+            장기 과업 추가
           </button>
-        }
-      />
-      <div className="task-board-filters">
-        <label>
-          분야
-          <select
-            aria-label="전체 과업 분야"
-            value={area}
-            onChange={(e) =>
-              setParams(
-                e.target.value === "all" ? {} : { area: e.target.value },
-              )
-            }
-          >
-            <option value="all">모든 분야</option>
-            {fields.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          상태
-          <select
-            aria-label="전체 과업 상태"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="all">모든 상태</option>
-            {taskStatuses.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          관리 방식
-          <select
-            aria-label="전체 과업 관리 방식"
-            value={mode}
-            onChange={(e) => setMode(e.target.value)}
-          >
-            <option value="all">모든 방식</option>
-            {Object.entries(trackingLabels).map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          과업 검색
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="과업명 또는 메모"
-          />
-        </label>
-      </div>
-      <div className="task-overview-grid">
-        {tasks.length ? (
-          tasks.map((t) => <TaskOverviewCard key={t.id} task={t} />)
-        ) : (
-          <Empty>조건에 맞는 과업이 없습니다.</Empty>
-        )}
-      </div>
+        </div>
+        <div className="task-board-filters">
+          <label>
+            분야
+            <select
+              aria-label="전체 과업 분야"
+              value={area}
+              onChange={(e) =>
+                setParams(
+                  e.target.value === "all" ? {} : { area: e.target.value },
+                )
+              }
+            >
+              <option value="all">모든 분야</option>
+              {fields.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            상태
+            <select
+              aria-label="전체 과업 상태"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="all">모든 상태</option>
+              {taskStatuses.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            관리 방식
+            <select
+              aria-label="전체 과업 관리 방식"
+              value={mode}
+              onChange={(e) => setMode(e.target.value)}
+            >
+              <option value="all">모든 방식</option>
+              {Object.entries(trackingLabels).map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            과업 검색
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="과업명 또는 메모"
+            />
+          </label>
+        </div>
+        <div className="task-overview-grid">
+          {tasks.length ? (
+            tasks.map((t) => <TaskOverviewCard key={t.id} task={t} />)
+          ) : (
+            <Empty>조건에 맞는 과업이 없습니다.</Empty>
+          )}
+        </div>
+      </section>
       {adding && (
         <TaskForm
           area={area === "all" ? "english" : (area as FieldId)}

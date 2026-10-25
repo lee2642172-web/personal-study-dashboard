@@ -2,7 +2,12 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useData } from "./state";
 import { useLocalDate } from "./useLocalDate";
-import { studySummary, studySeries, customsLectureProgress } from "./dashboard";
+import {
+  studySummary,
+  studySeries,
+  customsLectureProgress,
+  dashboardTimeEntries,
+} from "./dashboard";
 import { fields, type FieldId } from "./model";
 import { getDayBook, isDayBook } from "./dayLearning";
 import { Progress } from "./ui";
@@ -10,7 +15,7 @@ import { Progress } from "./ui";
 export function StudyTimeSummary() {
   const { data } = useData(),
     today = useLocalDate();
-  const summary = studySummary(data.logs, today);
+  const summary = studySummary(dashboardTimeEntries(data), today);
   return (
     <section className="study-time-summary" aria-label="학습시간 요약">
       {[
@@ -43,7 +48,7 @@ export function StudyTimeChart() {
     [area, setArea] = useState<FieldId | "">(""),
     [selection, setSelection] = useState("");
   const series = studySeries(
-    data.logs,
+    dashboardTimeEntries(data),
     today,
     period,
     month,
@@ -157,9 +162,9 @@ export function StudyTimeChart() {
         ))}
       </div>
       <p className="micro-note">
-        {period === "month" ? "선택한 월의 일별 기록 · " : ""}실제 학습일 기준 ·
-        시간 미입력·취소 기록·자료 정비 제외 · 막대를 누르면 상세 수치를 확인할
-        수 있어요.
+        {period === "month" ? "선택한 월의 일별 기록 · " : ""}실제 기록일 기준 ·
+        전체 분야에는 일반 할 일 완료시간도 합산합니다. 막대를 누르면 날짜별
+        시간을 확인할 수 있어요.
       </p>
     </section>
   );

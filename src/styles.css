@@ -4972,3 +4972,224 @@ footer > span:first-child {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Simple one-off todos remain separate from long-running progress projects. */
+.today-learning-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.todo-board {
+  padding: 24px;
+  margin-bottom: 32px;
+  border: 1px solid #e0e7f1;
+  border-radius: 14px;
+  background: #fff;
+}
+.todo-board-heading h2,
+.long-task-heading h2 {
+  color: #4a607e;
+  font-size: 17px;
+}
+.todo-board-heading p,
+.long-task-heading p {
+  margin-top: 8px;
+  color: #8193af;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.todo-add-form {
+  margin: 20px 0;
+}
+.todo-add-line {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+.todo-add-line > label {
+  flex: 1;
+  min-width: 0;
+}
+.todo-add-line > .primary-button {
+  flex-shrink: 0;
+}
+.todo-board label,
+.todo-complete-form label {
+  font-size: 11px;
+  color: #8193af;
+}
+.todo-optional {
+  margin-top: 12px;
+  font-size: 11px;
+  color: #8193af;
+}
+.todo-optional summary {
+  cursor: pointer;
+}
+.todo-optional .form-grid {
+  margin-top: 14px;
+}
+.todo-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid #edf1f7;
+  margin-bottom: 12px;
+}
+.todo-controls > label {
+  flex: 1 1 180px;
+  max-width: 260px;
+}
+.todo-controls input {
+  margin-top: 0 !important;
+}
+.todo-status-filter {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.todo-status-filter button {
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: #8193af;
+  background: transparent;
+  font-size: 12px;
+}
+.todo-status-filter button[aria-pressed="true"] {
+  color: #5677b6;
+  background: #eef3fc;
+  border-color: #e1e9f9;
+}
+.todo-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 18px 0;
+  border-top: 1px solid #edf1f7;
+}
+.todo-row.is-done {
+  display: block;
+}
+.todo-row.is-focused {
+  background: #f5f8ff;
+}
+.todo-row-heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+.todo-row-heading > div:first-child {
+  min-width: 0;
+}
+.todo-row h3 {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  color: #4a607e;
+}
+.todo-row.is-done h3 > svg {
+  flex-shrink: 0;
+  color: #53947a;
+}
+.todo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #8a9bb2;
+  font-size: 11px;
+  margin-top: 7px;
+}
+.todo-completed {
+  color: #53947a;
+}
+.todo-overdue {
+  color: #b38b59;
+}
+.todo-note {
+  color: #8193af;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  margin-top: 7px;
+}
+.todo-row-actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.todo-delete {
+  color: #a78289;
+}
+.todo-complete-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.todo-complete-form label {
+  width: 145px;
+}
+.todo-complete-form .primary-button {
+  flex-shrink: 0;
+}
+.todo-empty {
+  padding: 24px 0;
+  color: #92a2b9;
+  font-size: 12px;
+}
+.todo-notice {
+  min-height: 18px;
+  color: #6486a9;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.language-task-heading > .long-task-heading {
+  display: block;
+  flex: 1;
+}
+@media (max-width: 1050px) {
+  .todo-row {
+    display: block;
+  }
+  .todo-complete-form {
+    margin-top: 12px;
+    justify-content: flex-end;
+  }
+}
+@media (max-width: 650px) {
+  .todo-board {
+    padding: 18px;
+  }
+  .todo-add-line {
+    flex-wrap: wrap;
+  }
+  .todo-add-line > label,
+  .todo-controls > label {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .todo-optional .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .todo-row-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .todo-row-actions {
+    margin-left: auto;
+  }
+  .todo-complete-form label {
+    width: auto;
+    flex: 1;
+  }
+}
