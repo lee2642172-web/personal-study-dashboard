@@ -2,16 +2,12 @@ import {
   StudyTimeSummary,
   StudyTimeChart,
   CustomsDashboard,
-  LanguageSnapshot,
 } from "./Dashboard";
-import { UpcomingEvents } from "./Calendar";
 import { LectureQuickCheck } from "./LectureQuickCheck";
 import { TodayLearning } from "./TodayLearning";
 import { EbsReviewPanel } from "./EbsReview";
 import { DayBook } from "./DayBook";
 import { isDayBook, getDayBook, dayRoundTotal } from "./dayLearning";
-import { isDateString } from "./dates";
-import { useLocalDate } from "./useLocalDate";
 import { useState } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import {
@@ -298,19 +294,15 @@ function FieldCards({
 }
 export function Home() {
   const { data } = useData();
-  const today = useLocalDate();
   const grammar = data.materials.filter((m) =>
     ["basic", "intermediate"].includes(m.id),
-  );
-  const projects = data.tasks.filter(
-    (t) => t.kind === "프로젝트" && t.status !== "완료",
   );
   return (
     <>
       <PageHeading
         eyebrow="LEARNING OVERVIEW"
         title="학습 상황판"
-        description="실제 학습시간과 강의 진도, 다음 일정을 한눈에 확인하세요."
+        description="실제 학습시간과 강의 진도를 한눈에 확인하세요."
       />
       <StudyTimeSummary />
       <TodayLearning compact />
@@ -329,73 +321,6 @@ export function Home() {
           </div>
         </div>
       </Section>
-      <div className="dashboard-secondary-grid">
-        <LanguageSnapshot />
-        <UpcomingEvents />
-      </div>
-      <div className="dashboard-secondary-grid">
-        <section
-          className="dashboard-panel home-projects"
-          aria-label="프로젝트 현황"
-        >
-          <div className="dashboard-panel-heading">
-            <h2>프로젝트 현황</h2>
-            <Link className="text-link" to="/tasks">
-              과업 보기 →
-            </Link>
-          </div>
-          {projects.length ? (
-            <ul className="snapshot-list">
-              {projects.slice(0, 2).map((t) => (
-                <li key={t.id}>
-                  <Link to="/tasks">
-                    <strong>{t.title}</strong>
-                    <span>
-                      {t.status}
-                      <small>
-                        {t.items.length
-                          ? `체크 항목 ${t.items.filter((i) => i.done).length} / ${t.items.length} 완료`
-                          : "체크 항목 없음"}
-                      </small>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="dashboard-empty">진행 중인 프로젝트가 없습니다.</p>
-          )}
-          <div className="dashboard-panel-footer">
-            <Link className="text-link" to="/goals">
-              시험 목표 관리 →
-            </Link>
-            <Link className="text-link" to="/library">
-              보관함 →
-            </Link>
-          </div>
-        </section>
-        <section className="dashboard-panel home-recent">
-          <div className="dashboard-panel-heading">
-            <h2>최근 학습 기록</h2>
-            <Link className="text-link" to="/records">
-              기록 전체 →
-            </Link>
-          </div>
-          <LogList
-            logs={data.logs
-              .filter(
-                (l) =>
-                  l.date &&
-                  isDateString(l.date) &&
-                  l.date <= today &&
-                  !l.voided &&
-                  l.activity !== "system",
-              )
-              .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
-              .slice(0, 3)}
-          />
-        </section>
-      </div>
     </>
   );
 }
