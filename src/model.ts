@@ -175,6 +175,11 @@ export type VocabularyBook = {
   materialId: string;
   materialIds: string[];
   baselineLastDay: number | null;
+  dayPlan?: {
+    organizedThroughDay: number;
+    remainingStartDay: number;
+    remainingEndDay: number;
+  };
   existingWordEstimate: number;
   incomingWordEstimate: number;
   wordsPerDay: 10;

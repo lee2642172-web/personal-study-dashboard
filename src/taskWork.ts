@@ -370,9 +370,9 @@ export const taskTemplates: {
   {
     id: "chinese-hsk6",
     area: "chinese",
-    title: "HSK 6급 단어 정리",
-    tracking: { mode: "quantity", total: 2500, unit: "단어" },
-    note: "HSK 6급 추가 정리 대상 약 2,500개(수정 가능). HSK 급수별 시트와 전체 연속 Day 번호를 유지하며 기존 마지막 Day는 원본에서 확인합니다.",
+    title: "중국어 단어장 추가 정리",
+    tracking: { mode: "day-range", dayStart: 311, dayEnd: 500 },
+    note: "Day 1~310 정리 완료 · Day 311~500 (190 Days) 추가 정리 예정. 급수별 시트 구분 없이 전체 연속 Day로 관리하며, 정리 진도와 실제 학습·회독 기록은 별도로 유지합니다.",
   },
   {
     id: "hiragana",

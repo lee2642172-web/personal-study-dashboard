@@ -57,14 +57,18 @@ export function VocabularySummary({
       <div>
         <h2>{fieldName(area)} 단어장</h2>
         <p>
-          기존 약 {book.existingWordEstimate.toLocaleString()}개 ·{" "}
+          {book.dayPlan
+            ? `기존 Day 1~${book.dayPlan.organizedThroughDay} 정리 완료 · `
+            : `기존 약 ${book.existingWordEstimate.toLocaleString()}개 · `}
           {plan.last === null
             ? "실제 마지막 Day 확인 필요"
             : `현재 마지막 Day ${plan.last}`}{" "}
           · Day당 10개
         </p>
         <small>
-          추가 정리 대상 약 {book.incomingWordEstimate.toLocaleString()}개 ·
+          {book.dayPlan
+            ? `추가 정리 Day ${book.dayPlan.remainingStartDay}~${book.dayPlan.remainingEndDay} (${book.dayPlan.remainingEndDay - book.dayPlan.remainingStartDay + 1} Days) · `
+            : `추가 정리 대상 약 ${book.incomingWordEstimate.toLocaleString()}개 · `}
           실제 원본 입력{" "}
           {book.entries
             .filter((e) => e.status !== "reference")
@@ -107,7 +111,7 @@ function VocabularySetup({
   const { data, update } = useData();
   const [materialId, setMaterial] = useState(book.materialId),
     [last, setLast] = useState(
-      book.baselineLastDay === null ? "" : String(book.baselineLastDay),
+      String(book.baselineLastDay ?? book.dayPlan?.organizedThroughDay ?? ""),
     ),
     [existing, setExisting] = useState(String(book.existingWordEstimate)),
     [incoming, setIncoming] = useState(String(book.incomingWordEstimate)),
@@ -190,95 +194,105 @@ function VocabularySetup({
             ? " 편입 이후에는 기존 경계와 대상 자료를 바꾸지 않습니다."
             : ""}
         </p>
-        <div className="form-grid">
-          <label>
-            기존 단어 수 (대략)
-            <input
-              type="number"
-              min="0"
-              step="1"
-              required
-              value={existing}
-              onChange={(e) => setExisting(e.target.value)}
-            />
-          </label>
-          <label>
-            추가 정리 대상 수 (대략)
-            <input
-              type="number"
-              min="0"
-              step="1"
-              required
-              value={incoming}
-              onChange={(e) => setIncoming(e.target.value)}
-            />
-          </label>
-        </div>
-        <h3>기존 시트와 전체 연속 Day 범위</h3>
-        <p className="form-help">
-          실제 확인한 범위만 입력하세요. 급수마다 Day 1로 초기화하지 않습니다.
-          미확인 범위는 비워둘 수 있습니다.
-        </p>
-        <div className="vocabulary-sheet-setup">
-          {sheets.map((s) => (
-            <fieldset key={s.id}>
-              <legend>{s.title}</legend>
-              <label>
-                연결 자료
-                <select
-                  aria-label={`${s.title} 연결 자료`}
-                  value={s.materialId}
-                  onChange={(e) =>
-                    patchSheet(s.id, { materialId: e.target.value })
-                  }
-                >
-                  <option value="">미확인 / 같은 원본 내부 시트</option>
-                  {data.materials
-                    .filter((m) => m.area === book.area)
-                    .map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.title}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <div className="form-grid">
-                <label>
-                  시작 Day
-                  <input
-                    aria-label={`${s.title} 시작 Day`}
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={s.startDay ?? ""}
-                    onChange={(e) =>
-                      patchSheet(s.id, {
-                        startDay:
-                          e.target.value === "" ? null : Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  종료 Day
-                  <input
-                    aria-label={`${s.title} 종료 Day`}
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={s.endDay ?? ""}
-                    onChange={(e) =>
-                      patchSheet(s.id, {
-                        endDay:
-                          e.target.value === "" ? null : Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-              </div>
-            </fieldset>
-          ))}
-        </div>
+        {book.area !== "chinese" && (
+          <div className="form-grid">
+            <label>
+              기존 단어 수 (대략)
+              <input
+                type="number"
+                min="0"
+                step="1"
+                required
+                value={existing}
+                onChange={(e) => setExisting(e.target.value)}
+              />
+            </label>
+            <label>
+              추가 정리 대상 수 (대략)
+              <input
+                type="number"
+                min="0"
+                step="1"
+                required
+                value={incoming}
+                onChange={(e) => setIncoming(e.target.value)}
+              />
+            </label>
+          </div>
+        )}
+        {book.area !== "chinese" && (
+          <>
+            <h3>기존 시트와 전체 연속 Day 범위</h3>
+            <p className="form-help">
+              실제 확인한 범위만 입력하세요. 급수마다 Day 1로 초기화하지
+              않습니다. 미확인 범위는 비워둘 수 있습니다.
+            </p>
+            <div className="vocabulary-sheet-setup">
+              {sheets.map((s) => (
+                <fieldset key={s.id}>
+                  <legend>{s.title}</legend>
+                  <label>
+                    연결 자료
+                    <select
+                      aria-label={`${s.title} 연결 자료`}
+                      value={s.materialId}
+                      onChange={(e) =>
+                        patchSheet(s.id, { materialId: e.target.value })
+                      }
+                    >
+                      <option value="">미확인 / 같은 원본 내부 시트</option>
+                      {data.materials
+                        .filter((m) => m.area === book.area)
+                        .map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.title}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <div className="form-grid">
+                    <label>
+                      시작 Day
+                      <input
+                        aria-label={`${s.title} 시작 Day`}
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={s.startDay ?? ""}
+                        onChange={(e) =>
+                          patchSheet(s.id, {
+                            startDay:
+                              e.target.value === ""
+                                ? null
+                                : Number(e.target.value),
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      종료 Day
+                      <input
+                        aria-label={`${s.title} 종료 Day`}
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={s.endDay ?? ""}
+                        onChange={(e) =>
+                          patchSheet(s.id, {
+                            endDay:
+                              e.target.value === ""
+                                ? null
+                                : Number(e.target.value),
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                </fieldset>
+              ))}
+            </div>
+          </>
+        )}
         {error && (
           <p className="form-error" role="alert">
             {error}
@@ -301,7 +315,9 @@ function VocabularyPaste({
     [text, setText] = useState(""),
     [reference, setReference] = useState(false),
     [sheetId, setSheet] = useState(
-      book.area === "chinese" ? "hsk-6" : book.sheets[0].id,
+      book.area === "chinese"
+        ? (book.sheets.find((s) => s.id === "chinese") ?? book.sheets[0]).id
+        : book.sheets[0].id,
     ),
     [error, setError] = useState("");
   function submit(e: FormEvent) {
@@ -338,20 +354,22 @@ function VocabularyPaste({
             <option value="reference">기존 단어 색인 (중복 비교용)</option>
           </select>
         </label>
-        <label>
-          원본 시트
-          <select
-            aria-label="원본 시트"
-            value={sheetId}
-            onChange={(e) => setSheet(e.target.value)}
-          >
-            {book.sheets.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.title}
-              </option>
-            ))}
-          </select>
-        </label>
+        {book.area !== "chinese" && (
+          <label>
+            원본 시트
+            <select
+              aria-label="원본 시트"
+              value={sheetId}
+              onChange={(e) => setSheet(e.target.value)}
+            >
+              {book.sheets.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label>
           단어 · 뜻 · 메모 (탭으로 구분)
           <textarea
@@ -431,21 +449,23 @@ function VocabularyEntryForm({
             onChange={(e) => setEntry({ ...entry, note: e.target.value })}
           />
         </label>
-        <label>
-          시트
-          <select
-            aria-label="단어 시트"
-            disabled={entry.status === "imported"}
-            value={entry.sheetId}
-            onChange={(e) => setEntry({ ...entry, sheetId: e.target.value })}
-          >
-            {book.sheets.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.title}
-              </option>
-            ))}
-          </select>
-        </label>
+        {book.area !== "chinese" && (
+          <label>
+            시트
+            <select
+              aria-label="단어 시트"
+              disabled={entry.status === "imported"}
+              value={entry.sheetId}
+              onChange={(e) => setEntry({ ...entry, sheetId: e.target.value })}
+            >
+              {book.sheets.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <p className="form-help">
           {entry.status === "imported"
             ? `Day ${entry.day} · ${entry.position}번은 그대로 유지됩니다.`
@@ -528,7 +548,7 @@ export function VocabularyPage() {
       connectVocabularyTask(d, book!.id, selectedTask || undefined),
     );
     setNotice(
-      "같은 정리 과업에 연결했습니다. 처리 수량과 실제 작업 날짜는 과업에서 기록하세요.",
+      "같은 정리 과업에 연결했습니다. 정리한 범위와 실제 작업 날짜는 과업에서 기록하세요.",
     );
   }
   return (
@@ -555,8 +575,9 @@ export function VocabularyPage() {
       >
         <div className="vocabulary-metadata">
           <span>
-            기존 단어 색인 {references.length.toLocaleString()}개 / 약{" "}
-            {book.existingWordEstimate.toLocaleString()}개
+            기존 단어 색인 {references.length.toLocaleString()}개
+            {book.area !== "chinese" &&
+              ` / 약 ${book.existingWordEstimate.toLocaleString()}개`}
           </span>
           <span>다음 Day {plan.next ?? "미확인"}</span>
           {book.materialId && (
@@ -572,8 +593,8 @@ export function VocabularyPage() {
         </p>
         {plan.last === null && (
           <p className="vocabulary-inline-notice">
-            편입 전 실제 마지막 Day와 대상 자료를 확인해 주세요. 중국어의 약
-            2,500개를 Day 250으로 환산하지 않습니다.
+            편입 전 기존 구조 확인에서 Day를 이어 붙일 대상 자료와 실제 마지막
+            Day를 연결해 주세요.
           </p>
         )}
         <div className="vocabulary-actions">
@@ -608,7 +629,9 @@ export function VocabularyPage() {
           <span>
             {plan.next !== null && plan.days
               ? `Day ${plan.next}~${plan.last! + plan.days}`
-              : "확정 단어가 같은 시트에 10개 모이면 편입 가능"}
+              : book.area === "chinese"
+                ? "확정 단어가 10개 모이면 편입 가능"
+                : "확정 단어가 같은 시트에 10개 모이면 편입 가능"}
           </span>
           <button
             className="primary-button"
@@ -626,8 +649,10 @@ export function VocabularyPage() {
           </button>
         </div>
         <p className="micro-note">
-          시트별 10개 단위로 편입하고 남은 단어는 대기합니다. Day는 급수·시트가
-          바뀌어도 전체 마지막 번호 뒤에 연속으로 추가하며, 기존 Day를 다시
+          {book.area === "chinese"
+            ? "급수별 시트 구분 없이 10개씩 새 Day로 편입하며 남은 단어는 대기합니다. "
+            : "시트별 10개 단위로 편입하고 남은 단어는 대기합니다. "}
+          Day는 전체 마지막 번호 뒤에 연속으로 추가하며, 기존 Day를 다시
           채우거나 번호를 바꾸지 않습니다.
         </p>
       </section>
@@ -703,24 +728,26 @@ export function VocabularyPage() {
               <option value="duplicates">중복 후보</option>
             </select>
           </label>
-          <label>
-            시트
-            <select
-              aria-label="단어 목록 시트"
-              value={sheet}
-              onChange={(e) => {
-                setSheet(e.target.value);
-                setLimit(30);
-              }}
-            >
-              <option value="all">모든 시트</option>
-              {book.sheets.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title}
-                </option>
-              ))}
-            </select>
-          </label>
+          {book.area !== "chinese" && (
+            <label>
+              시트
+              <select
+                aria-label="단어 목록 시트"
+                value={sheet}
+                onChange={(e) => {
+                  setSheet(e.target.value);
+                  setLimit(30);
+                }}
+              >
+                <option value="all">모든 시트</option>
+                {book.sheets.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label>
             단어 검색
             <input
@@ -742,7 +769,8 @@ export function VocabularyPage() {
                   <div>
                     <strong>{entry.term}</strong>
                     <span>
-                      {book.sheets.find((s) => s.id === entry.sheetId)?.title} ·{" "}
+                      {book.area !== "chinese" &&
+                        `${book.sheets.find((s) => s.id === entry.sheetId)?.title} · `}
                       {statusLabels[entry.status]}
                       {entry.day !== null
                         ? ` · Day ${entry.day} / ${entry.position}번`
@@ -841,7 +869,11 @@ export function VocabularyPage() {
         )}
       </section>
       <details className="vocabulary-sources">
-        <summary>기존 자료와 시트 범위 확인</summary>
+        <summary>
+          {book.area === "chinese"
+            ? "기존 자료와 Day 범위 확인"
+            : "기존 자료와 시트 범위 확인"}
+        </summary>
         {book.materialIds.map((mid) => {
           const m = data.materials.find((m) => m.id === mid);
           return m ? (
@@ -854,19 +886,22 @@ export function VocabularyPage() {
             </p>
           ) : null;
         })}
-        {book.sheets.map((s) => (
-          <p key={s.id}>
-            {s.title}: 기존 Day{" "}
-            {s.startDay === null ? "범위 미확인" : `${s.startDay}~${s.endDay}`}{" "}
-            · 신규 편입{" "}
-            {
-              book.entries.filter(
-                (e) => e.status === "imported" && e.sheetId === s.id,
-              ).length
-            }
-            개
-          </p>
-        ))}
+        {book.area !== "chinese" &&
+          book.sheets.map((s) => (
+            <p key={s.id}>
+              {s.title}: 기존 Day{" "}
+              {s.startDay === null
+                ? "범위 미확인"
+                : `${s.startDay}~${s.endDay}`}{" "}
+              · 신규 편입{" "}
+              {
+                book.entries.filter(
+                  (e) => e.status === "imported" && e.sheetId === s.id,
+                ).length
+              }
+              개
+            </p>
+          ))}
       </details>
       {setup && <VocabularySetup book={book} onClose={() => setSetup(false)} />}
       {paste && <VocabularyPaste book={book} onClose={() => setPaste(false)} />}

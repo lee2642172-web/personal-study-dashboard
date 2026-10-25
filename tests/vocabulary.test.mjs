@@ -26,6 +26,7 @@ import {
   addDayLearning,
 } from "../src/dayLearning.ts";
 import { studySummary } from "../src/dashboard.ts";
+import { taskProgress, saveTaskRecord } from "../src/taskWork.ts";
 const get = (d, area = "spanish") =>
   d.vocabularies.find((b) => b.area === area);
 function add(d, n, prefix, sheet, reference = false, area = "spanish") {
@@ -76,18 +77,24 @@ const oldMaterial = (id, area, total, title) => ({
   title,
 });
 
-test("metadata seeds only known Spanish Days and approximate word counts; Chinese last Day and actual words remain unknown", () => {
+test("metadata uses confirmed Chinese Day 310 and Spanish Day 450 without inventing words or learning", () => {
   const d = createInitialData(),
     sp = get(d),
     cn = get(d, "chinese");
   assert.equal(sp.baselineLastDay, 450);
   assert.equal(sp.existingWordEstimate, 4500);
   assert.equal(sp.incomingWordEstimate, 5113);
-  assert.equal(cn.baselineLastDay, null);
+  assert.equal(cn.baselineLastDay, 310);
+  assert.deepEqual(cn.dayPlan, {
+    organizedThroughDay: 310,
+    remainingStartDay: 311,
+    remainingEndDay: 500,
+  });
   assert.equal(cn.existingWordEstimate, 2500);
   assert.equal(cn.incomingWordEstimate, 2500);
-  assert.equal(d.materials.find((m) => m.id === cn.materialId).total, null);
-  assert.equal(cn.sheets.length, 6);
+  assert.equal(d.materials.find((m) => m.id === cn.materialId).total, 310);
+  assert.equal(vocabularyPlan(d, cn).next, 311);
+  assert.equal(cn.sheets.length, 1);
   assert.ok(cn.sheets.every((s) => s.startDay === null && s.endDay === null));
   assert.ok(d.vocabularies.every((b) => b.entries.length === 0));
   assert.equal(d.logs.length, 22);
@@ -156,32 +163,53 @@ test("an existing reference material is not cloned or mistaken for a Day count",
   assert.equal(get(next, "chinese").baselineLastDay, null);
   assert.equal(next.materials.find((m) => m.id === "reference-cn").total, 2500);
 });
-test("conflicting registered Day evidence blocks guesses; verified setup rejects overlapping grade ranges", () => {
+test("higher existing Day evidence is preserved; setup rejects reductions and overlapping legacy ranges", () => {
   const d = legacy();
-  d.materials.push(oldMaterial("cn-old", "chinese", 250, "HSK 단어장"));
+  d.materials.push(oldMaterial("cn-old", "chinese", 350, "HSK 단어장"));
   d.logs.push({
     ...d.logs[0],
-    id: "cn275",
+    id: "cn375",
     area: "chinese",
     materialId: "cn-old",
-    item: "275",
+    item: "375",
   });
   const adopted = includeVocabularies(d);
-  assert.equal(get(adopted, "chinese").baselineLastDay, null);
-  assert.equal(vocabularyEvidence(adopted, get(adopted, "chinese")), 275);
-  assert.equal(configure(adopted, 250), adopted);
-  const confirmed = configure(adopted, 275);
-  assert.equal(get(confirmed, "chinese").baselineLastDay, 275);
-  assert.equal(confirmed.materials.find((m) => m.id === "cn-old").total, 275);
+  assert.equal(get(adopted, "chinese").baselineLastDay, 375);
+  assert.equal(vocabularyEvidence(adopted, get(adopted, "chinese")), 375);
+  assert.equal(configure(adopted, 350), adopted);
+  const confirmed = configure(adopted, 375);
+  assert.equal(get(confirmed, "chinese").baselineLastDay, 375);
+  assert.equal(confirmed.materials.find((m) => m.id === "cn-old").total, 375);
   const b = get(confirmed, "chinese"),
-    sheets = b.sheets.map((s, i) =>
-      i < 2 ? { ...s, startDay: 1, endDay: 100 } : s,
-    );
+    sheets = [
+      { ...b.sheets[0], startDay: 1, endDay: 100 },
+      { ...b.sheets[0], id: "legacy-grade", startDay: 1, endDay: 100 },
+    ];
   assert.equal(
     configureVocabulary(confirmed, b.id, { ...b, sheets }),
     confirmed,
   );
   assert.equal(appendVocabularyDays(confirmed, b.id), confirmed);
+  // Old logs can contain numeric items beyond the Day navigation limit.
+  // Preserve that evidence without creating an invalid material or stored book.
+  const unusual = legacy();
+  unusual.materials.push(
+    oldMaterial("cn-unusual", "chinese", 250, "기존 중국어 단어장"),
+  );
+  unusual.logs.push({
+    ...unusual.logs[0],
+    id: "unusual-day",
+    area: "chinese",
+    materialId: "cn-unusual",
+    item: "10001",
+  });
+  assert.ok(validData(unusual));
+  const safe = includeVocabularies(unusual);
+  assert.ok(validData(safe));
+  assert.deepEqual(safe.logs, unusual.logs);
+  assert.equal(safe.materials.find((m) => m.id === "cn-unusual").total, 250);
+  assert.equal(get(safe, "chinese").baselineLastDay, null);
+  assert.equal(configure(safe, 310), safe);
 });
 test("Excel-pasted columns preserve legitimate words and accents; duplicate review spans sheets and known references only", () => {
   assert.deepEqual(
@@ -291,29 +319,179 @@ test("only ten confirmed real words create Spanish Day 451; leftovers never inve
     next,
   ); // Managed books cannot add an empty Day as preparation/learning together.
 });
-test("Chinese grade sheets use one global counter and never mix partial grade groups in a Day", () => {
-  let d = configure(createInitialData(), 250);
+test("Chinese pending words combine across legacy grade sheets into continuous Days after 310", () => {
+  let d = createInitialData();
+  const b = get(d, "chinese");
+  b.sheets.push(
+    ...[5, 6].map((n) => ({
+      id: `hsk-${n}`,
+      title: `HSK ${n}급`,
+      materialId: "",
+      startDay: null,
+      endDay: null,
+    })),
+  );
   d = add(d, 5, "grade5", "hsk-5", false, "chinese");
   d = add(d, 5, "grade6", "hsk-6", false, "chinese");
   d = ready(d, "chinese");
-  assert.equal(vocabularyPlan(d, get(d, "chinese")).days, 0);
+  assert.equal(vocabularyPlan(d, get(d, "chinese")).days, 1);
   d = ready(add(d, 5, "grade5b", "hsk-5", false, "chinese"), "chinese");
   d = ready(add(d, 5, "grade6b", "hsk-6", false, "chinese"), "chinese");
   d = appendVocabularyDays(d, get(d, "chinese").id);
   const book = get(d, "chinese");
-  assert.equal(d.materials.find((m) => m.id === book.materialId).total, 252);
-  assert.equal(book.entries.filter((e) => e.day === 251).length, 10);
-  assert.ok(
-    book.entries
-      .filter((e) => e.day === 251)
-      .every((e) => e.sheetId === "hsk-5"),
-  );
-  assert.ok(
-    book.entries
-      .filter((e) => e.day === 252)
-      .every((e) => e.sheetId === "hsk-6"),
-  );
+  assert.equal(d.materials.find((m) => m.id === book.materialId).total, 312);
+  assert.equal(book.entries.filter((e) => e.day === 311).length, 10);
+  assert.equal(book.entries.filter((e) => e.day === 312).length, 10);
+  assert.ok(book.entries.every((e) => e.sheetId === "chinese"));
   assert.ok(validData(d));
+});
+test("confirmed Chinese range migration preserves already imported Days, actual records and saved round positions", () => {
+  let d = createInitialData();
+  const b = get(d, "chinese"),
+    material = d.materials.find((m) => m.id === b.materialId);
+  delete b.dayPlan;
+  b.baselineLastDay = 250;
+  b.sheets = [
+    {
+      id: "hsk-6",
+      title: "HSK 6급",
+      materialId: "",
+      startDay: null,
+      endDay: null,
+    },
+  ];
+  material.total = 251;
+  b.entries = Array.from({ length: 10 }, (_, i) => ({
+    id: `old-cn-${i}`,
+    term: `旧词${i}`,
+    meaning: "보존할 원본",
+    note: "",
+    sheetId: "hsk-6",
+    status: "imported",
+    day: 251,
+    position: i + 1,
+  }));
+  b.taskId = "old-cn-prep";
+  d.tasks.push({
+    id: b.taskId,
+    title: "HSK 6급 단어 정리",
+    area: "chinese",
+    kind: "프로젝트",
+    status: "보류",
+    items: [],
+    note: "기존 메모",
+    tracking: {
+      mode: "quantity",
+      total: 2500,
+      unit: "단어",
+      materialId: material.id,
+    },
+    records: [
+      {
+        id: "old-quantity",
+        mode: "quantity",
+        quantity: 17,
+        date: "2026-10-24",
+        note: "기존 작업",
+      },
+    ],
+  });
+  d.logs.push({
+    ...d.logs[0],
+    id: "cn-study",
+    area: "chinese",
+    materialId: material.id,
+    item: "5",
+    round: 2,
+    date: "2026-10-24",
+    minutes: 7,
+  });
+  d.dayBooks = [
+    {
+      materialId: material.id,
+      totalDays: 251,
+      activeRound: 2,
+      rounds: [
+        { round: 1, nextDay: null, lastOpenedDay: 250, totalDays: 250 },
+        { round: 2, nextDay: 1, lastOpenedDay: 77, lastReviewId: "cn-study" },
+      ],
+    },
+  ];
+  const before = structuredClone(d),
+    result = includeVocabularies(d),
+    book = get(result, "chinese");
+  assert.equal(book.baselineLastDay, 250); // Imported Days 251+ must remain valid.
+  assert.equal(vocabularyPlan(result, book).next, 311);
+  assert.equal(result.materials.find((m) => m.id === material.id).total, 310);
+  assert.deepEqual(
+    book.entries,
+    before.vocabularies.find((b) => b.area === "chinese").entries,
+  );
+  assert.deepEqual(result.logs, before.logs);
+  assert.equal(result.dayBooks[0].activeRound, 2);
+  assert.equal(result.dayBooks[0].rounds[1].lastOpenedDay, 77);
+  assert.equal(dayRoundTotal(result.dayBooks[0], 1), 250);
+  const task = result.tasks.find((t) => t.id === b.taskId);
+  assert.deepEqual(
+    task.records,
+    before.tasks.find((t) => t.id === b.taskId).records,
+  );
+  assert.equal(task.status, "보류");
+  assert.equal(task.note, "기존 메모");
+  assert.equal(task.tracking.total, 2500); // Old quantity history remains editable.
+  assert.equal(taskProgress(task).done, 0); // Quantities are never guessed into completed Days.
+  assert.equal(taskProgress(task).total, 190);
+  assert.equal(includeVocabularies(result), result);
+  assert.deepEqual(d, before);
+  assert.ok(validData(result));
+});
+test("Chinese preparation uses 311–500 independently of study; migration never cuts off older work ranges", () => {
+  let d = createInitialData(),
+    b = get(d, "chinese");
+  d = connectVocabularyTask(d, b.id);
+  b = get(d, "chinese");
+  const original = structuredClone(d),
+    id = b.taskId;
+  assert.equal(taskProgress(d.tasks.find((t) => t.id === id)).total, 190);
+  d = saveTaskRecord(
+    d,
+    id,
+    {
+      id: "cn-work",
+      mode: "day-range",
+      startDay: 311,
+      endDay: 312,
+      date: "2026-10-25",
+      note: "정리만 완료",
+    },
+    "2026-10-25",
+  );
+  assert.equal(taskProgress(d.tasks.find((t) => t.id === id)).done, 2);
+  assert.deepEqual(d.logs, original.logs);
+  assert.deepEqual(d.dayBooks, original.dayBooks);
+  assert.deepEqual(d.materials, original.materials); // Work does not create actual Day contents.
+  d.tasks.find((t) => t.id === id).tracking.dayEnd = 520;
+  d = connectVocabularyTask(d, b.id);
+  assert.equal(d.tasks.find((t) => t.id === id).tracking.dayEnd, 520); // Reconnecting must not reset later edits.
+  const task = d.tasks.find((t) => t.id === id);
+  task.tracking.dayStart = 1;
+  task.records.push({
+    id: "older-range",
+    mode: "day-range",
+    startDay: 250,
+    endDay: 251,
+    date: "2026-10-24",
+    note: "보존할 과거 구간",
+  });
+  delete get(d, "chinese").dayPlan;
+  const prior = structuredClone(task),
+    result = includeVocabularies(d);
+  assert.deepEqual(
+    result.tasks.find((t) => t.id === id),
+    prior,
+  );
+  assert.ok(validData(result));
+  assert.equal(result.tasks.length, original.tasks.length);
 });
 test("append preserves existing round counts, frozen scopes, active round and browsing position without recording learning", () => {
   let d = createInitialData();
