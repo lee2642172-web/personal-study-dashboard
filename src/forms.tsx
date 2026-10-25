@@ -1,3 +1,11 @@
+import {
+  taskStatuses,
+  trackingLabels,
+  taskMode,
+  taskTemplates,
+  saveTask,
+  taskSettingsError,
+} from "./taskWork";
 import { lectureMinutes } from "./lectureLearning";
 import { nextEbsReviewDate } from "./ebsReview";
 import { isDayBook, saveDayAwareLog } from "./dayLearning";
@@ -14,6 +22,7 @@ import {
   type StudyLog,
   type Goal,
   type Task,
+  type TaskTracking,
   type FieldId,
 } from "./model";
 const numberValue = (value: string) => (value === "" ? null : Number(value));
@@ -727,17 +736,21 @@ export function GoalForm({
 }
 export function TaskForm({
   value,
+  area = "english",
   onClose,
+  onSaved,
 }: {
   value?: Task;
+  area?: FieldId;
   onClose: () => void;
+  onSaved?: (id: string) => void;
 }) {
-  const { update } = useData();
+  const { data, update } = useData();
   const [t, setT] = useState<Task>(
     value ?? {
       id: newId(),
       title: "",
-      area: "english",
+      area,
       kind: "자유 과업",
       status: "예정",
       items: [],
@@ -745,7 +758,12 @@ export function TaskForm({
     },
   );
   const [lines, setLines] = useState(t.items.map((i) => i.title).join("\n"));
-  const patch = (p: Partial<Task>) => setT({ ...t, ...p });
+  const [error, setError] = useState("");
+  const patch = (p: Partial<Task>) => setT((prev) => ({ ...prev, ...p }));
+  const config = t.tracking;
+  const mode = taskMode(t);
+  const track = (p: Partial<TaskTracking>) =>
+    patch({ tracking: { mode, ...config, ...p } });
   function submit(e: FormEvent) {
     e.preventDefault();
     const usedIds = new Set<string>();
@@ -760,20 +778,57 @@ export function TaskForm({
             ? t.items[index]
             : undefined);
         if (old) usedIds.add(old.id);
-        return { id: old?.id ?? newId(), title, done: old?.done ?? false };
+        return {
+          ...old,
+          id: old?.id ?? newId(),
+          title,
+          done: old?.done ?? false,
+        };
       });
     const next = { ...t, items };
-    update((d) => ({
-      ...d,
-      tasks: value
-        ? d.tasks.map((x) => (x.id === t.id ? next : x))
-        : [...d.tasks, next],
-    }));
+    const message = taskSettingsError(next);
+    if (message) {
+      setError(message);
+      return;
+    }
+    update((d) => saveTask(d, next));
+    onSaved?.(t.id);
     onClose();
   }
   return (
-    <Dialog title="과업 / 프로젝트 관리" onClose={onClose}>
+    <Dialog title={value ? "과업 설정 수정" : "과업 추가"} onClose={onClose}>
       <form className="v1-form" onSubmit={submit}>
+        {!value && (
+          <label>
+            등록 양식 (선택)
+            <select
+              aria-label="과업 등록 양식"
+              defaultValue=""
+              onChange={(e) => {
+                const template = taskTemplates.find(
+                  (p) => p.id === e.target.value,
+                );
+                if (template)
+                  patch({
+                    title: template.title,
+                    area: template.area,
+                    kind: "프로젝트",
+                    tracking: { ...template.tracking },
+                    note: template.note,
+                  });
+              }}
+            >
+              <option value="">직접 입력</option>
+              {taskTemplates
+                .filter((p) => p.area === t.area)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
         <label>
           과업명
           <input
@@ -785,7 +840,7 @@ export function TaskForm({
         <FieldSelect value={t.area} onChange={(area) => patch({ area })} />
         <div className="form-grid">
           <label>
-            유형
+            과업 구분
             <select
               aria-label="과업 유형"
               value={t.kind}
@@ -804,31 +859,188 @@ export function TaskForm({
                 patch({ status: e.target.value as Task["status"] })
               }
             >
-              <option>예정</option>
-              <option>진행 중</option>
-              <option>완료</option>
+              {taskStatuses.map((status) => (
+                <option key={status}>{status}</option>
+              ))}
             </select>
           </label>
+          <label>
+            관리 방식
+            <select
+              aria-label="과업 관리 방식"
+              value={mode}
+              onChange={(e) => {
+                const next = e.target.value as TaskTracking["mode"];
+                track({
+                  mode: next,
+                  ...(next === "rounds" && !config?.subject
+                    ? { subject: t.title }
+                    : {}),
+                });
+              }}
+            >
+              {Object.entries(trackingLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            목표 완료일 (선택)
+            <input
+              type="date"
+              value={t.targetDate ?? ""}
+              onChange={(e) => patch({ targetDate: e.target.value })}
+            />
+          </label>
         </div>
+        {mode === "day-range" && (
+          <div className="form-grid">
+            <label>
+              전체 시작 Day
+              <input
+                type="number"
+                min="1"
+                step="1"
+                required
+                value={config?.dayStart ?? ""}
+                onChange={(e) =>
+                  track({
+                    dayStart:
+                      e.target.value === ""
+                        ? undefined
+                        : Number(e.target.value),
+                  })
+                }
+              />
+            </label>
+            <label>
+              전체 종료 Day
+              <input
+                type="number"
+                min={config?.dayStart ?? 1}
+                step="1"
+                required
+                value={config?.dayEnd ?? ""}
+                onChange={(e) => track({ dayEnd: numberValue(e.target.value) })}
+              />
+            </label>
+          </div>
+        )}
+        {mode === "quantity" && (
+          <div className="form-grid">
+            <label>
+              전체 대상 수량 (미정이면 비우기)
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={config?.total ?? ""}
+                onChange={(e) => track({ total: numberValue(e.target.value) })}
+              />
+            </label>
+            <label>
+              수량 단위
+              <input
+                value={config?.unit ?? "개"}
+                onChange={(e) => track({ unit: e.target.value })}
+                placeholder="단어, 페이지, 개"
+              />
+            </label>
+          </div>
+        )}
+        {mode === "rounds" && (
+          <div className="form-grid">
+            <label>
+              회독 대상
+              <input
+                required
+                value={config?.subject ?? ""}
+                onChange={(e) => track({ subject: e.target.value })}
+              />
+            </label>
+            <label>
+              목표 회독 수 (선택)
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={config?.roundTarget ?? ""}
+                onChange={(e) =>
+                  track({ roundTarget: numberValue(e.target.value) })
+                }
+              />
+            </label>
+          </div>
+        )}
         <label>
-          체크 항목 (줄마다 하나)
-          <textarea
-            rows={5}
-            value={lines}
-            onChange={(e) => setLines(e.target.value)}
-          />
+          관련 자료 (선택)
+          <select
+            aria-label="과업 관련 자료"
+            value={config?.materialId ?? ""}
+            onChange={(e) => track({ materialId: e.target.value })}
+          >
+            <option value="">연결 없음</option>
+            {config?.materialId &&
+              !data.materials.some((m) => m.id === config.materialId) && (
+                <option value={config.materialId}>기존 연결 자료</option>
+              )}
+            {data.materials
+              .filter((m) => m.area === t.area || m.id === config?.materialId)
+              .map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.title}
+                </option>
+              ))}
+          </select>
         </label>
+        {mode === "steps" ? (
+          <label>
+            단계 / 체크 항목 (줄마다 하나, 선택)
+            <textarea
+              rows={4}
+              value={lines}
+              onChange={(e) => setLines(e.target.value)}
+            />
+          </label>
+        ) : (
+          <details>
+            <summary>참고 체크 항목 (선택)</summary>
+            <label>
+              <span className="sr-only">참고 체크 항목</span>
+              <textarea
+                aria-label="참고 체크 항목"
+                rows={3}
+                value={lines}
+                onChange={(e) => setLines(e.target.value)}
+              />
+            </label>
+          </details>
+        )}
         <label>
           메모
           <textarea
+            rows={3}
             value={t.note}
             onChange={(e) => patch({ note: e.target.value })}
           />
         </label>
+        {t.records?.length ? (
+          <p className="form-help">
+            관리 방식을 바꾸어도 기존 이력을 보존하며 현재 방식의 기록만 진도에
+            집계합니다.
+          </p>
+        ) : null}
         <p className="form-help">
-          체크 항목 완료 수를 과업 진도로 표시합니다. 학습 진도와는 별개이며
-          정비시간은 학습 기록에서 별도 입력합니다.
+          정리 과업과 자료의 학습·복습 진도는 별도입니다. 회독 목표에 도달해도
+          추가 기록할 수 있으며 과업 상태는 직접 변경합니다.
         </p>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
         <button className="primary-button">과업 저장</button>
       </form>
     </Dialog>

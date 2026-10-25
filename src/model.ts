@@ -98,10 +98,35 @@ export type Task = {
   title: string;
   area: FieldId;
   kind: "자유 과업" | "프로젝트";
-  status: "예정" | "진행 중" | "완료";
-  items: { id: string; title: string; done: boolean }[];
+  status: "예정" | "진행 중" | "보류" | "완료";
+  items: TaskStep[];
   note: string;
+  targetDate?: string;
+  tracking?: TaskTracking;
+  records?: TaskWorkRecord[];
 };
+export type TaskStep = {
+  id: string;
+  title: string;
+  done: boolean;
+  note?: string;
+  completedDate?: string;
+};
+export type TaskTracking = {
+  mode: "day-range" | "quantity" | "rounds" | "steps";
+  dayStart?: number;
+  dayEnd?: number | null;
+  total?: number | null;
+  unit?: string;
+  subject?: string;
+  roundTarget?: number | null;
+  materialId?: string;
+};
+export type TaskWorkRecord = { id: string; date: string; note: string } & (
+  | { mode: "day-range"; startDay: number; endDay: number }
+  | { mode: "quantity"; quantity: number }
+  | { mode: "rounds" }
+);
 export type DayRoundState = {
   round: number;
   /** Frozen scope of a completed round when more Days are appended. */

@@ -1,3 +1,4 @@
+import { LanguageTasks, TaskBoard } from "./Tasks";
 import {
   StudyTimeSummary,
   StudyTimeChart,
@@ -33,7 +34,7 @@ import {
   Stat,
   ActivityLabels,
 } from "./ui";
-import { MaterialForm, LogForm, GoalForm, TaskForm, createLog } from "./forms";
+import { MaterialForm, LogForm, GoalForm, createLog } from "./forms";
 import {
   fields,
   fieldName,
@@ -45,7 +46,6 @@ import {
   companyExams,
   type Material,
   type Goal,
-  type Task,
   type StudyLog,
   type FieldId,
 } from "./model";
@@ -186,64 +186,6 @@ function GoalCard({ goal: g, onEdit }: { goal: Goal; onEdit?: () => void }) {
     </article>
   );
 }
-function TaskCard({ task: t, onEdit }: { task: Task; onEdit?: () => void }) {
-  const { update } = useData();
-  return (
-    <article className="v1-task-card amber">
-      <div className="v1-card-line">
-        <span className="eyebrow">
-          {t.kind} · {fieldName(t.area)}
-        </span>
-        <span className="status-pill">{t.status}</span>
-        {onEdit && (
-          <button
-            className="icon-button"
-            aria-label={`${t.title} 과업 수정`}
-            onClick={onEdit}
-          >
-            <Pencil size={15} />
-          </button>
-        )}
-      </div>
-      <h3>{t.title}</h3>
-      <p className="muted">{t.note}</p>
-      {t.items.length > 0 && (
-        <Progress
-          done={t.items.filter((i) => i.done).length}
-          total={t.items.length}
-          label="과업 체크 항목"
-        />
-      )}
-      <div className="task-checks">
-        {t.items.map((item) => (
-          <label key={item.id}>
-            <input
-              type="checkbox"
-              checked={item.done}
-              onChange={(e) => {
-                const done = e.target.checked;
-                update((d) => ({
-                  ...d,
-                  tasks: d.tasks.map((task) =>
-                    task.id === t.id
-                      ? {
-                          ...task,
-                          items: task.items.map((x) =>
-                            x.id === item.id ? { ...x, done } : x,
-                          ),
-                        }
-                      : task,
-                  ),
-                }));
-              }}
-            />
-            {item.title}
-          </label>
-        ))}
-      </div>
-    </article>
-  );
-}
 function FieldCards({
   category,
 }: {
@@ -351,6 +293,7 @@ export function English() {
         title="영어, 문장으로 쌓는 실력"
         description="출근길에는 EBS, 퇴근길에는 예문 오디오. 자료와 실제 학습을 구분해 관리해요."
       />
+      <LanguageTasks area="english" />
       <div className="v1-notice">
         <Clock3 size={23} />
         <div>
@@ -460,6 +403,9 @@ export function FieldPage() {
           </button>
         }
       />
+      {field.category === "languages" && (
+        <LanguageTasks key={field.id} area={field.id} />
+      )}
       <Section title="등록한 자료">
         <div className="v1-three-grid">
           {materials.length ? (
@@ -1140,40 +1086,9 @@ export function Goals() {
   );
 }
 export function Tasks() {
-  const { data } = useData();
-  const [editing, setEditing] = useState<Task | undefined>();
-  const [open, setOpen] = useState(false);
   return (
     <>
-      <PageHeading
-        eyebrow="TASKS & PROJECTS"
-        title="과업"
-        description="자료 정비와 자유 과업을 관리합니다. 실제 학습 진도와 섞지 않아요."
-        action={
-          <button
-            className="primary-button"
-            onClick={() => {
-              setEditing(undefined);
-              setOpen(true);
-            }}
-          >
-            <Plus size={16} />
-            과업 추가
-          </button>
-        }
-      />
-      <div className="v1-two-grid">
-        {data.tasks.map((t) => (
-          <TaskCard
-            key={t.id}
-            task={t}
-            onEdit={() => {
-              setEditing(t);
-              setOpen(true);
-            }}
-          />
-        ))}
-      </div>
+      <TaskBoard />
       <Section title="기존 SYSTEM 자료" tag="PRESERVED">
         <div className="simple-panel">
           <Layers3 size={20} />
@@ -1187,7 +1102,6 @@ export function Tasks() {
           </a>
         </div>
       </Section>
-      {open && <TaskForm value={editing} onClose={() => setOpen(false)} />}
     </>
   );
 }

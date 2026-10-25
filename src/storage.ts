@@ -1,4 +1,5 @@
 import { includeFinancialAccounting } from "./catalogs/financialAccounting.ts";
+import { validTask } from "./taskWork.ts";
 import { validCalendarEvent } from "./calendar.ts";
 import { includeCostManagementAccounting } from "./catalogs/costManagementAccounting.ts";
 import { includeCustomsLawIntro } from "./catalogs/customsLawIntro.ts";
@@ -169,21 +170,7 @@ export function validData(v: unknown): v is DashboardData {
         ["계획", "진행 중", "장기 목표", "취득"].includes(String(g.status)) &&
         ["인정", "미인정", "확인 필요"].includes(String(g.recognized)),
     ) &&
-    (v.tasks as unknown[]).every(
-      (t) =>
-        object(t) &&
-        strings(t, ["id", "title", "note"]) &&
-        area(t.area) &&
-        ["자유 과업", "프로젝트"].includes(String(t.kind)) &&
-        ["예정", "진행 중", "완료"].includes(String(t.status)) &&
-        Array.isArray(t.items) &&
-        t.items.every(
-          (i) =>
-            object(i) &&
-            strings(i, ["id", "title"]) &&
-            typeof i.done === "boolean",
-        ),
-    )
+    (v.tasks as unknown[]).every(validTask)
   );
 }
 export const browserRepository: DashboardRepository = {

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import LegacyApp from "./LegacyApp";
 import { EbsPage } from "./Ebs";
+import { TaskDetailPage } from "./Tasks";
 import { CalendarPage } from "./Calendar";
 import { DataProvider, useData } from "./state";
 import {
@@ -64,9 +65,11 @@ function App() {
       ? "/languages"
       : location.pathname.startsWith("/fields/")
         ? "/certifications"
-        : location.pathname.startsWith("/materials/")
-          ? "/library"
-          : location.pathname;
+        : location.pathname.startsWith("/tasks/")
+          ? "/tasks"
+          : location.pathname.startsWith("/materials/")
+            ? "/library"
+            : location.pathname;
   const title =
     navigation.find((n) => n.path === activePath)?.label ??
     fieldName(fieldId ?? "");
@@ -163,6 +166,10 @@ function App() {
               element={<MaterialPage key={fieldId} />}
             />
             <Route path="/tasks" element={<Tasks />} />
+            <Route
+              path="/tasks/:id"
+              element={<TaskDetailPage key={fieldId} />}
+            />
             <Route path="/records" element={<Records />} />
             <Route path="/goals" element={<Goals />} />
             <Route
