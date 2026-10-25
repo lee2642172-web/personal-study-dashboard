@@ -24,6 +24,7 @@ import {
   dayRoundTotal,
   recordDayReview,
   addDayLearning,
+  openDay,
 } from "../src/dayLearning.ts";
 import { studySummary } from "../src/dashboard.ts";
 import { taskProgress, saveTaskRecord } from "../src/taskWork.ts";
@@ -151,17 +152,54 @@ test("migration reuses registered books, preserves real last Day and never merge
   assert.equal(includeVocabularies(result), result);
   assert.ok(validData(result));
 });
-test("an existing reference material is not cloned or mistaken for a Day count", () => {
+test("a Chinese source inventory retains its word count while a separate Day study material uses the confirmed 310 Days", () => {
   const d = legacy();
   d.materials.push({
     ...oldMaterial("reference-cn", "chinese", 2500, "중국어 단어 원본"),
     kind: "reference",
   });
   const next = includeVocabularies(d);
-  assert.equal(next.materials.filter((m) => m.area === "chinese").length, 1);
-  assert.equal(get(next, "chinese").materialId, "");
-  assert.equal(get(next, "chinese").baselineLastDay, null);
-  assert.equal(next.materials.find((m) => m.id === "reference-cn").total, 2500);
+  assert.equal(next.materials.filter((m) => m.area === "chinese").length, 2);
+  const book = get(next, "chinese"),
+    study = next.materials.find((m) => m.id === book.materialId);
+  assert.equal(book.baselineLastDay, 310);
+  assert.equal(study.kind, "days");
+  assert.equal(study.total, 310);
+  assert.ok(isDayBook(study));
+  assert.deepEqual(
+    next.materials.find((m) => m.id === "reference-cn"),
+    d.materials.find((m) => m.id === "reference-cn"),
+  );
+  assert.deepEqual(next.logs, d.logs);
+  assert.deepEqual(next.tasks, d.tasks);
+  assert.equal(book.entries.length, 0);
+  assert.equal(vocabularyPlan(next, book).next, 311);
+  assert.equal(includeVocabularies(next), next);
+  assert.ok(validData(next));
+});
+test("existing Chinese Day study bindings are repaired once without duplicating materials or changing review positions", () => {
+  let d = createInitialData();
+  const id = get(d, "chinese").materialId;
+  d = recordDayReview(d, id, 1, 2, "cn-existing-review", "2026-10-25");
+  d = openDay(d, id, 1, 77);
+  get(d, "chinese").materialId = "";
+  delete d.materials.find((m) => m.id === id).vocabularyId;
+  const before = structuredClone(d),
+    repaired = includeVocabularies(d);
+  assert.equal(repaired.materials.length, before.materials.length);
+  assert.equal(get(repaired, "chinese").materialId, id);
+  assert.ok(isDayBook(repaired.materials.find((m) => m.id === id)));
+  assert.deepEqual(repaired.logs, before.logs);
+  assert.deepEqual(repaired.dayBooks, before.dayBooks);
+  assert.deepEqual(repaired.tasks, before.tasks);
+  assert.equal(includeVocabularies(repaired), repaired);
+  assert.ok(validData(repaired));
+  const missingFlag = structuredClone(repaired);
+  delete missingFlag.materials.find((m) => m.id === id).vocabularyId;
+  const restored = includeVocabularies(missingFlag);
+  assert.ok(isDayBook(restored.materials.find((m) => m.id === id)));
+  assert.deepEqual(restored.dayBooks, before.dayBooks);
+  assert.deepEqual(restored.logs, before.logs);
 });
 test("higher existing Day evidence is preserved; setup rejects reductions and overlapping legacy ranges", () => {
   const d = legacy();

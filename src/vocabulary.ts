@@ -144,7 +144,88 @@ export function includeVocabularies(data: DashboardData): DashboardData {
       vocabularies: [...(result.vocabularies ?? []), book],
     };
   }
-  return includeChineseDayPlan(result);
+  return connectChineseDayLearning(includeChineseDayPlan(result));
+}
+/** A source/reference inventory must not prevent access to the separate Day study screen. */
+function connectChineseDayLearning(data: DashboardData): DashboardData {
+  const book = data.vocabularies?.find((b) => b.area === "chinese");
+  if (!book) return data;
+  const linked = data.materials.find(
+    (m) =>
+      m.id === book.materialId && m.area === "chinese" && m.kind === "days",
+  );
+  if (linked) {
+    if (linked.vocabularyId === book.id) return data;
+    return {
+      ...data,
+      materials: data.materials.map((m) =>
+        m.id === linked.id ? { ...m, vocabularyId: book.id } : m,
+      ),
+    };
+  }
+  const candidates = data.materials.filter(
+    (m) => m.area === "chinese" && m.kind === "days",
+  );
+  // Never guess which existing book owns a set of study records.
+  if (candidates.length > 1) return data;
+  let material = candidates[0];
+  if (!material) {
+    let id = "chinese-vocabulary-days";
+    while (data.materials.some((m) => m.id === id)) id += "-book";
+    material = {
+      id,
+      area: "chinese",
+      title: "중국어 단어장",
+      kind: "days",
+      status: "보관 중",
+      total: null,
+      targetPasses: null,
+      vocabularyId: book.id,
+      note: chineseDayNote,
+      routine: "Day별 학습·복습",
+      schedule: [],
+      startDate: "",
+      duration: null,
+    };
+  }
+  const last = Math.max(
+    book.dayPlan?.organizedThroughDay ?? vocabularyPolicy.chinese.lastDay,
+    book.baselineLastDay ?? 0,
+    dayEvidence(data, material.id),
+    ...book.entries.filter((e) => e.status === "imported").map((e) => e.day!),
+  );
+  if (!positive(last)) return data;
+  const updatedBook = {
+    ...book,
+    materialId: material.id,
+    materialIds: [...new Set([...book.materialIds, material.id])],
+    baselineLastDay: book.entries.some((e) => e.status === "imported")
+      ? book.baselineLastDay
+      : last,
+  };
+  if (!validVocabulary(updatedBook)) return data;
+  let next = replaceBook(data, updatedBook);
+  const exists = data.materials.some((m) => m.id === material.id);
+  next = {
+    ...next,
+    materials: exists
+      ? next.materials.map((m) =>
+          m.id === material.id ? { ...m, vocabularyId: book.id } : m,
+        )
+      : [...next.materials, material],
+  };
+  const hasHistory =
+    data.dayBooks?.some((b) => b.materialId === material.id) ||
+    data.logs.some((l) => l.materialId === material.id);
+  if (hasHistory) next = ensureDayBook(next, material.id);
+  next = {
+    ...next,
+    materials: next.materials.map((m) =>
+      m.id === material.id ? { ...m, total: last } : m,
+    ),
+  };
+  if (hasHistory) next = ensureDayBook(next, material.id);
+  return next;
 }
 /** Apply the user's confirmed Day range once, without inventing dated work or study. */
 function includeChineseDayPlan(data: DashboardData): DashboardData {

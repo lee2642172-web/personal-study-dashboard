@@ -4828,6 +4828,52 @@ footer > span:first-child {
 }
 
 /* Vocabulary sources, duplicate review and append-only Day allocation. */
+.vocabulary-hub {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+.vocabulary-action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid #e0e7f1;
+  border-radius: 14px;
+  background: #fff;
+}
+.vocabulary-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #6486c9;
+}
+.vocabulary-card-heading h2 {
+  font-size: 16px;
+  color: #4a607e;
+}
+.vocabulary-action-card > p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #8193af;
+  margin: 10px 0 20px;
+}
+.vocabulary-card-value {
+  font-size: 21px;
+  color: #405a7d;
+}
+.vocabulary-action-card > small {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #8193af;
+  margin: 7px 0 20px;
+}
+.vocabulary-action-card > .text-link {
+  margin-top: 12px;
+  font-size: 11px;
+}
 .vocabulary-summary {
   display: flex;
   align-items: center;
@@ -5073,6 +5119,13 @@ footer > span:first-child {
   }
 }
 @media (max-width: 650px) {
+  .vocabulary-hub {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .vocabulary-action-card {
+    padding: 18px;
+  }
   .vocabulary-summary,
   .vocabulary-workflow,
   .vocabulary-task-link,

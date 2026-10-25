@@ -1,6 +1,13 @@
 import { useState, useMemo, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Pencil } from "lucide-react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  Plus,
+  Pencil,
+  BookOpen,
+  ListPlus,
+  ArrowRight,
+} from "lucide-react";
 import { useData } from "./state";
 import { PageHeading, Dialog, Empty } from "./ui";
 import {
@@ -11,6 +18,7 @@ import {
   type VocabularySheet,
 } from "./model";
 import { taskProgress } from "./taskWork";
+import { getDayBook } from "./dayLearning";
 import {
   vocabularyPlan,
   vocabularyEvidence,
@@ -45,10 +53,79 @@ export function VocabularySummary({
   const { data } = useData();
   const book = data.vocabularies?.find((b) => b.area === area);
   if (!book) return null;
-  const material = data.materials.find((m) => m.id === book.materialId),
+  const material = data.materials.find(
+      (m) =>
+        m.id === book.materialId && m.kind === "days" && m.area === book.area,
+    ),
     plan = vocabularyPlan(data, book),
     task = data.tasks.find((t) => t.id === book.taskId),
     p = task ? taskProgress(task) : null;
+  if (!management) {
+    const study = material?.total ? getDayBook(data, material) : null;
+    const round = study?.rounds.find((r) => r.round === study.activeRound);
+    return (
+      <section
+        className="vocabulary-hub"
+        aria-label={`${fieldName(area)} 단어장 현황`}
+      >
+        <article className="vocabulary-action-card" aria-label="Day 학습">
+          <div className="vocabulary-card-heading">
+            <BookOpen size={18} />
+            <h2>Day 학습</h2>
+          </div>
+          <p>등록된 Day를 선택해 회독과 복습을 기록하세요.</p>
+          <strong className="vocabulary-card-value">
+            {material?.total
+              ? `Day 1~${material.total}`
+              : "학습할 기존 단어장 연결"}
+          </strong>
+          <small>
+            {study && round
+              ? `학습 위치 · ${study.activeRound}회독 · Day ${round.lastOpenedDay}`
+              : "기존 자료의 학습·회독 기록을 유지합니다."}
+          </small>
+          <Link
+            className="primary-button"
+            to={
+              material?.total
+                ? `/materials/${material.id}`
+                : `/vocabulary/${book.id}?setup=learning`
+            }
+          >
+            {material?.total ? "Day 학습하기" : "Day 학습 연결"}
+            <ArrowRight size={15} />
+          </Link>
+        </article>
+        <article className="vocabulary-action-card" aria-label="새 Day 입력">
+          <div className="vocabulary-card-heading">
+            <ListPlus size={18} />
+            <h2>새 Day 입력</h2>
+          </div>
+          <p>새 단어를 입력·검토하고 기존 Day 뒤에 추가하세요.</p>
+          <strong className="vocabulary-card-value">
+            {plan.next === null
+              ? "기존 마지막 Day 확인 필요"
+              : `다음 편입 Day ${plan.next}`}
+          </strong>
+          <small>
+            {book.dayPlan
+              ? `추가 정리 범위 · Day ${book.dayPlan.remainingStartDay}~${book.dayPlan.remainingEndDay} (${book.dayPlan.remainingEndDay - book.dayPlan.remainingStartDay + 1} Days)`
+              : `추가 정리 대상 약 ${book.incomingWordEstimate.toLocaleString()}개 · Day당 10개`}
+          </small>
+          <Link className="secondary-button" to={`/vocabulary/${book.id}`}>
+            새 Day 입력하기
+            <ArrowRight size={15} />
+          </Link>
+          {task && p && (
+            <Link className="text-link" to={`/tasks/${task.id}`}>
+              정리 과업 · {p.done.toLocaleString()} /{" "}
+              {p.total?.toLocaleString() ?? "미정"} {p.unit}
+            </Link>
+          )}
+        </article>
+      </section>
+    );
+  }
   return (
     <section
       className="vocabulary-summary"
@@ -79,22 +156,13 @@ export function VocabularySummary({
       <div className="vocabulary-summary-links">
         {material?.total ? (
           <Link className="secondary-button" to={`/materials/${material.id}`}>
-            Day별 학습
+            Day 학습하기
           </Link>
         ) : null}
-        {!management && (
-          <Link className="secondary-button" to={`/vocabulary/${book.id}`}>
-            단어 입력·편입 관리
-          </Link>
-        )}
         {task && p ? (
           <Link className="text-link" to={`/tasks/${task.id}`}>
             정리 과업 · {p.done.toLocaleString()} /{" "}
             {p.total?.toLocaleString() ?? "미정"} {p.unit}
-          </Link>
-        ) : !management ? (
-          <Link className="text-link" to={`/vocabulary/${book.id}`}>
-            정리 과업 연결 →
           </Link>
         ) : null}
       </div>
@@ -491,8 +559,11 @@ function VocabularyEntryForm({
 export function VocabularyPage() {
   const { id } = useParams(),
     { data, update } = useData();
+  const [searchParams, setSearchParams] = useSearchParams();
   const book = data.vocabularies?.find((b) => b.id === id);
-  const [setup, setSetup] = useState(false),
+  const [setup, setSetup] = useState(
+      () => searchParams.get("setup") === "learning",
+    ),
     [paste, setPaste] = useState(false),
     [editing, setEditing] = useState<VocabularyEntry | null>(null),
     [status, setStatus] = useState("pending"),
@@ -903,7 +974,19 @@ export function VocabularyPage() {
             </p>
           ))}
       </details>
-      {setup && <VocabularySetup book={book} onClose={() => setSetup(false)} />}
+      {setup && (
+        <VocabularySetup
+          book={book}
+          onClose={() => {
+            setSetup(false);
+            if (searchParams.has("setup")) {
+              const next = new URLSearchParams(searchParams);
+              next.delete("setup");
+              setSearchParams(next, { replace: true });
+            }
+          }}
+        />
+      )}
       {paste && <VocabularyPaste book={book} onClose={() => setPaste(false)} />}
       {editing && (
         <VocabularyEntryForm

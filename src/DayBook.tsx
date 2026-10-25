@@ -184,7 +184,7 @@ export function DayBook({ material: m }: { material: Material }) {
                 className="secondary-button"
                 to={`/vocabulary/${m.vocabularyId}`}
               >
-                새 단어 편입 관리
+                새 Day 입력
               </Link>
             ) : (
               <button
