@@ -258,13 +258,19 @@ export function Home() {
       <EbsReviewPanel compact />
       <div className="dashboard-main-grid">
         <StudyTimeChart />
-        <CustomsDashboard />
       </div>
       <Section title="영어 학습 현황" tag="LANGUAGES · MAIN" link="/english">
         <div className="home-english-grid">
           <EbsCard />
           <EnglishDashboard />
         </div>
+      </Section>
+      <Section
+        title="관세사 학습 현황"
+        tag="CERTIFICATIONS · MAIN"
+        link="/fields/customs"
+      >
+        <CustomsDashboard />
       </Section>
     </>
   );

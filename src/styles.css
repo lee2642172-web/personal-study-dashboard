@@ -3907,7 +3907,7 @@ footer > span:first-child {
 }
 .dashboard-main-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
   margin: 0 0 28px;
   align-items: start;
@@ -4480,12 +4480,6 @@ footer > span:first-child {
   }
   .schedule-toolbar .secondary-button {
     padding: 8px 10px;
-  }
-}
-
-@media (max-width: 1050px) {
-  .dashboard-main-grid {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 
