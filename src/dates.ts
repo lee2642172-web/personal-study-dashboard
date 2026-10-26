@@ -47,11 +47,22 @@ export function shiftMonth(month: string, delta: number): string {
   next.setUTCMonth(next.getUTCMonth() + delta);
   return next.toISOString().slice(0, 7);
 }
+export const calendarWeekdays = [
+  "월",
+  "화",
+  "수",
+  "목",
+  "금",
+  "토",
+  "일",
+] as const;
+
+/** Month grid starts on Monday; blanks keep every date under its weekday. */
 export function calendarDates(month: string): (string | null)[] {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || !isDateString(`${month}-01`))
     return [];
   const first = new Date(`${month}-01T12:00:00Z`);
-  const offset = first.getUTCDay();
+  const offset = (first.getUTCDay() + 6) % 7;
   const last = new Date(first);
   last.setUTCMonth(first.getUTCMonth() + 1, 0);
   const length = last.getUTCDate();

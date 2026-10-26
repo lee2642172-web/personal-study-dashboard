@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createInitialData } from "../src/initialData.ts";
+import { calendarDates, calendarWeekdays } from "../src/dates.ts";
 import {
   validCalendarEvent,
   eventError,
@@ -24,6 +25,38 @@ const event = (patch = {}) => ({
   area: "",
   goalId: "",
   ...patch,
+});
+test("Monday-first month grids keep dates in the correct weekday columns across Sunday starts, full weeks and leap years", () => {
+  assert.deepEqual(calendarWeekdays, [
+    "월",
+    "화",
+    "수",
+    "목",
+    "금",
+    "토",
+    "일",
+  ]);
+  for (const [month, offset, count, rows] of [
+    ["2026-04", 2, 30, 5],
+    ["2026-11", 6, 30, 6],
+    ["2027-02", 0, 28, 4],
+    ["2028-02", 1, 29, 5],
+  ]) {
+    const cells = calendarDates(month);
+    assert.equal(cells.length, rows * 7);
+    assert.deepEqual(cells.slice(0, offset), Array(offset).fill(null));
+    assert.equal(cells[offset], `${month}-01`);
+    assert.equal(cells.filter(Boolean).length, count);
+    cells.forEach((date, column) => {
+      if (date)
+        assert.equal(
+          column % 7,
+          (new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7,
+        );
+    });
+    assert.equal(cells[offset + count - 1], `${month}-${count}`);
+    assert.ok(cells.slice(offset + count).every((date) => date === null));
+  }
 });
 test("calendar accepts optional times, personal events, linked goals, multi-day intervals and all required categories", () => {
   for (const category of ["시험", "시험 접수", "성적 발표", "학습", "기타"])

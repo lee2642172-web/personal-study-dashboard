@@ -111,7 +111,7 @@ test("weekend scheduling, leap months and calendar navigation remain date based"
   );
   const dates = calendarDates("2026-04");
   assert.equal(dates.length, 35);
-  assert.equal(dates[3], "2026-04-01");
+  assert.equal(dates[2], "2026-04-01");
   assert.ok(calendarDates("2028-02").includes("2028-02-29"));
   assert.equal(shiftMonth("2026-12", 1), "2027-01");
   assert.equal(shiftMonth("2027-01", -1), "2026-12");

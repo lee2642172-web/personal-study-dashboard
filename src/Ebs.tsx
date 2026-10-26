@@ -1,4 +1,4 @@
-import { localDate } from "./dates";
+import { localDate, calendarWeekdays } from "./dates";
 import { useLocalDate } from "./useLocalDate";
 import { EbsReviewPanel } from "./EbsReview";
 import { learningTime } from "./studyTime";
@@ -301,7 +301,7 @@ export function EbsPage() {
           </div>
           <div className="ebs-calendar-grid">
             <div className="ebs-weekdays">
-              {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
+              {calendarWeekdays.map((day) => (
                 <span key={day}>{day}</span>
               ))}
             </div>

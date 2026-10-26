@@ -11,7 +11,12 @@ import { useData } from "./state";
 import { useLocalDate } from "./useLocalDate";
 import { PageHeading, Dialog, Empty } from "./ui";
 import { fields, fieldName, newId, type CalendarEvent } from "./model";
-import { isDateString, calendarDates, shiftMonth } from "./dates";
+import {
+  isDateString,
+  calendarDates,
+  calendarWeekdays,
+  shiftMonth,
+} from "./dates";
 import {
   eventCategories,
   eventError,
@@ -361,7 +366,7 @@ export function CalendarPage() {
             </button>
           </div>
           <div className="schedule-weekdays">
-            {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
+            {calendarWeekdays.map((d) => (
               <span key={d}>{d}</span>
             ))}
           </div>
