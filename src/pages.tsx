@@ -9,6 +9,7 @@ import {
   StudyTimeSummary,
   StudyTimeChart,
   CustomsDashboard,
+  EnglishDashboard,
 } from "./Dashboard";
 import { LectureQuickCheck } from "./LectureQuickCheck";
 import { TodayLearning } from "./TodayLearning";
@@ -242,10 +243,6 @@ function FieldCards({
   );
 }
 export function Home() {
-  const { data } = useData();
-  const grammar = data.materials.filter((m) =>
-    ["basic", "intermediate"].includes(m.id),
-  );
   return (
     <>
       <PageHeading
@@ -266,11 +263,7 @@ export function Home() {
       <Section title="영어 학습 현황" tag="LANGUAGES · MAIN" link="/english">
         <div className="home-english-grid">
           <EbsCard />
-          <div className="home-grammar-grid">
-            {grammar.map((m) => (
-              <MaterialSummary key={m.id} material={m} showLatest />
-            ))}
-          </div>
+          <EnglishDashboard />
         </div>
       </Section>
     </>

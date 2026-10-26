@@ -11,6 +11,7 @@ import {
 import { fields, type FieldId } from "./model";
 import { getDayBook, isDayBook } from "./dayLearning";
 import { Progress } from "./ui";
+import { englishMaterialProgress } from "./englishProgress";
 
 export function StudyTimeSummary() {
   const { data } = useData(),
@@ -260,6 +261,110 @@ export function CustomsDashboard() {
         <Link className="text-link" to="/certifications">
           다른 자격증 →
         </Link>
+      </div>
+    </section>
+  );
+}
+
+export function EnglishDashboard() {
+  const { data } = useData();
+  const snapshots = englishMaterialProgress(data);
+  const primary = snapshots.filter(
+    ({ material, total }) =>
+      ["units", "days"].includes(material.kind) ||
+      (["book", "lectures"].includes(material.kind) && total !== null),
+  );
+  const other = snapshots.filter((item) => !primary.includes(item));
+  return (
+    <section
+      className="dashboard-panel english-dashboard"
+      aria-label="영어 교재·단어장 진도 현황"
+    >
+      <div className="dashboard-panel-heading">
+        <div>
+          <p className="eyebrow">ENGLISH · MAIN</p>
+          <h2>영어 교재·단어장</h2>
+        </div>
+        <Link className="text-link" to="/english">
+          영어 학습 →
+        </Link>
+      </div>
+      <ul className="english-progress-list">
+        {primary.map(
+          ({
+            material,
+            round,
+            total,
+            done,
+            unit,
+            position,
+            latest,
+            hasRecords,
+            dayBook,
+            initialCount,
+          }) => (
+            <li key={material.id}>
+              <Link
+                to={
+                  dayBook
+                    ? `/materials/${material.id}`
+                    : `/materials/${material.id}?round=${round}`
+                }
+              >
+                <div className="english-progress-title">
+                  <strong>{material.title}</strong>
+                  <span className="status-pill">{material.status}</span>
+                </div>
+                <div className="english-progress-caption">
+                  <span>{round}회독</span>
+                  <span>
+                    {total ? `${done} / ${total} ${unit}` : "전체 분량 미입력"}
+                  </span>
+                </div>
+                {total !== null && total > 0 && (
+                  <Progress
+                    done={done}
+                    total={total}
+                    label={`${material.title} ${round}회독 ${unit}`}
+                  />
+                )}
+                <small>
+                  {position !== null
+                    ? `학습 위치 Day ${position}`
+                    : latest
+                      ? `최근 완료 ${material.kind === "units" ? "Unit" : material.kind === "days" ? "Day" : material.kind === "book" ? "페이지" : "강"} ${latest.item}`
+                      : "학습 기록 전"}
+                  {position !== null && !hasRecords ? " · 복습 기록 전" : ""}
+                  {initialCount > 0 ? ` · 신규 학습 ${initialCount}회` : ""}
+                  {material.total && total !== material.total
+                    ? ` · 현재 자료 ${material.total} ${unit}`
+                    : ""}
+                </small>
+              </Link>
+            </li>
+          ),
+        )}
+      </ul>
+      {!primary.length && (
+        <p className="dashboard-empty">등록된 교재·단어장 진도가 없습니다.</p>
+      )}
+      {other.length > 0 && (
+        <details className="english-other-materials">
+          <summary>보관·기타 자료 {other.length}개</summary>
+          <ul>
+            {other.map(({ material }) => (
+              <li key={material.id}>
+                <Link to={`/materials/${material.id}`}>
+                  <strong>{material.title}</strong>
+                  <span>{material.status}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <div className="dashboard-panel-footer">
+        <span>자료별 현재 회독 · 기록된 완료 기준</span>
       </div>
     </section>
   );

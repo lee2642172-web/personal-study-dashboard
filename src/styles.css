@@ -5488,3 +5488,91 @@ footer > span:first-child {
   font-size: 11px;
   margin-top: 10px;
 }
+
+/* HOME English materials share a single progress panel; EBS keeps its own card. */
+.english-progress-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.english-progress-list > li {
+  padding: 14px 0;
+  border-top: 1px solid #edf1f7;
+}
+.english-progress-list > li > a {
+  display: block;
+}
+.english-progress-title,
+.english-progress-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 7px 12px;
+}
+.english-progress-title > strong {
+  color: #506886;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.english-progress-title > .status-pill {
+  font-size: 9px;
+}
+.english-progress-caption {
+  color: #8392aa;
+  font-size: 11px;
+  margin-top: 9px;
+}
+.english-progress-list .progress-caption {
+  justify-content: flex-end;
+  margin: 4px 0;
+}
+.english-progress-list .progress-caption > span {
+  display: none;
+}
+.english-progress-list .progress-caption > strong {
+  font-size: 10px;
+}
+.english-progress-list .progress {
+  height: 5px;
+}
+.english-progress-list small {
+  display: block;
+  font-size: 10px;
+  line-height: 1.8;
+  color: #9aa8bc;
+  margin-top: 6px;
+}
+.english-other-materials {
+  border-top: 1px solid #edf1f7;
+  margin-top: 2px;
+  padding-top: 14px;
+  color: #8a9bb4;
+  font-size: 11px;
+}
+.english-other-materials summary {
+  cursor: pointer;
+}
+.english-other-materials ul {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.english-other-materials li {
+  padding: 10px 0;
+}
+.english-other-materials li a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.english-other-materials strong {
+  color: #6d83a2;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.english-other-materials li span {
+  font-size: 10px;
+  white-space: nowrap;
+}
