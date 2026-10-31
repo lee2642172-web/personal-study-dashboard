@@ -6,17 +6,23 @@ import { EmailLoginError } from "./loginEmail";
 import { exportData } from "./storage";
 import type { DashboardData } from "./model";
 import { Dialog } from "./ui";
+import { RecoveryPanel } from "./RecoveryPanel";
 import setupSql from "../supabase/setup.sql?raw";
 
 export function SyncButton({ onOpen }: { onOpen: () => void }) {
-  const { phase, storageError, cloud } = useData();
+  const { phase, storageError, cloud, recoveryDraft, guestReviewNeeded } =
+    useData();
   const label = storageError
     ? "저장 주의"
     : cloud.authLoading
       ? "로그인 확인 중"
       : cloud.config && !cloud.user
         ? "로그인하여 기록 연결"
-        : syncLabels[phase];
+        : recoveryDraft && phase !== "saving"
+          ? "복구 초안 · 온라인 반영 전"
+          : guestReviewNeeded
+            ? "로그인 전 기기 기록 확인 필요"
+            : syncLabels[phase];
   return (
     <button
       type="button"
@@ -31,7 +37,7 @@ export function SyncButton({ onOpen }: { onOpen: () => void }) {
   );
 }
 export function SyncBanner({ onOpen }: { onOpen: () => void }) {
-  const { phase, cloud } = useData();
+  const { phase, cloud, recoveryDraft, guestReviewNeeded } = useData();
   if (
     !cloud.user ||
     !["choice", "conflict", "offline", "error"].includes(phase)
@@ -40,11 +46,15 @@ export function SyncBanner({ onOpen }: { onOpen: () => void }) {
   return (
     <div className="sync-banner" role="status">
       <span>
-        {phase === "choice"
-          ? "처음 연결할 기록을 선택해 주세요. 기존 기록은 아직 온라인에 반영하지 않았습니다."
-          : phase === "conflict"
-            ? "다른 기기의 변경과 겹칩니다. 양쪽 기록을 확인해 주세요."
-            : "온라인 저장을 완료하지 못했습니다. 기기의 기록은 유지됩니다."}
+        {recoveryDraft
+          ? "복구 초안을 이 기기에서 확인 중입니다. 온라인 기록은 아직 바꾸지 않았습니다."
+          : guestReviewNeeded
+            ? "로그인 전 이 기기에 별도 기록이 있습니다. ‘기록 복구’에서 최신 내용을 먼저 확인해 주세요."
+            : phase === "choice"
+              ? "처음 연결할 기록을 선택해 주세요. 기존 기록은 아직 온라인에 반영하지 않았습니다."
+              : phase === "conflict"
+                ? "다른 기기의 변경과 겹칩니다. 양쪽 기록을 확인해 주세요."
+                : "온라인 저장을 완료하지 못했습니다. 기기의 기록은 유지됩니다."}
       </span>
       <button className="secondary-button" onClick={onOpen}>
         기록 확인
@@ -71,6 +81,8 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
     backups,
     cloud,
     storageError,
+    recoveryDraft,
+    guestReviewNeeded,
   } = useData();
   const [url, setUrl] = useState(cloud.config?.url ?? ""),
     [key, setKey] = useState("");
@@ -79,6 +91,12 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const [replace, setReplace] = useState(false);
+  const [cloudReplacementConfirmed, setCloudReplacementConfirmed] =
+    useState(false);
+  useEffect(
+    () => setCloudReplacementConfirmed(false),
+    [data, remote?.revision],
+  );
   const [loginMethod, setLoginMethod] = useState<"email" | "password">("email");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -132,6 +150,7 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
           같은 계정으로 로그인하면 PC·태블릿·휴대폰에서 학습
           기록·진도·과업·일정을 함께 사용합니다.
         </p>
+        <RecoveryPanel working={working} />
         {!cloud.config ? (
           <>
             <div className="sync-setup-steps">
@@ -378,7 +397,11 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
                     : "처음 연결할 기록을 선택하세요."}
                 </h3>
                 <div className="sync-record-choice">
-                  <strong>현재 이 기기의 기록</strong>
+                  <strong>
+                    {recoveryDraft
+                      ? "현재 이 기기의 복구 초안"
+                      : "현재 이 기기의 기록"}
+                  </strong>
                   <Summary data={data} />
                   <button
                     className="text-button"
@@ -397,16 +420,33 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
                     >
                       <Download size={13} /> JSON 백업
                     </button>
+                    <p className="sync-caution">
+                      온라인 기록을 불러오면 현재 이 기기 화면의 기록 전체가
+                      온라인 사본으로 바뀝니다. 이 기기의 최신 기록이 자동으로
+                      합쳐지지 않습니다. 위 ‘기록 복구’에서 원본과 백업을 먼저
+                      확인해 주세요.
+                    </p>
+                    <label className="sync-replace-confirm">
+                      <input
+                        type="checkbox"
+                        checked={cloudReplacementConfirmed}
+                        onChange={(e) =>
+                          setCloudReplacementConfirmed(e.target.checked)
+                        }
+                      />
+                      이 기기의 최근 기록을 확인했으며 온라인 사본으로
+                      바꾸겠습니다.
+                    </label>
                     <button
                       className="primary-button"
-                      disabled={working}
+                      disabled={working || !cloudReplacementConfirmed}
                       onClick={() =>
                         void action(() => {
                           if (!cloud.useCloud())
                             throw new Error(
                               "이 기기의 기록을 백업하지 못해 교체를 중단했습니다. 저장 공간을 확인해 주세요.",
                             );
-                        }, "온라인 기록을 불러왔습니다. 이전 기기 기록은 아래 백업에서 확인할 수 있습니다.")
+                        }, "온라인 기록으로 화면을 바꿨습니다. 이전 이 기기 기록은 ‘기록 복구’에서 확인할 수 있습니다.")
                       }
                     >
                       온라인 기록 불러오기

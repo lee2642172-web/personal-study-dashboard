@@ -11,6 +11,7 @@ import type { DashboardData } from "./model";
 import { emailLoginError } from "./loginEmail";
 import { loginWithPassword, setAccountPassword } from "./passwordAuth";
 import { DashboardStore, type SyncView } from "./sync";
+import type { RecoverySource } from "./recovery";
 import {
   CLOUD_CONFIG_KEY,
   loadCloudConfig,
@@ -36,6 +37,8 @@ type State = SyncView & {
     refresh: () => Promise<void>;
     useLocal: () => Promise<void>;
     useCloud: () => boolean;
+    getRecoverySources: () => RecoverySource[];
+    stageRecovery: (id: string, expectedRaw: string) => void;
   };
 };
 const Context = createContext<State | null>(null);
@@ -203,6 +206,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     refresh: () => store.sync(),
     useLocal: store.useLocal,
     useCloud: store.useCloud,
+    getRecoverySources: store.getRecoverySources,
+    stageRecovery: store.stageRecovery,
   };
   return (
     <Context.Provider value={{ ...state, update: store.update, cloud }}>

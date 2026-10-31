@@ -228,12 +228,15 @@ export const browserRepository: DashboardRepository = {
   },
 };
 export function exportData(data: DashboardData) {
+  exportJsonText(JSON.stringify(data, null, 2), "my-dashboard-backup.json");
+}
+export function exportJsonText(raw: string, filename: string) {
   const url = URL.createObjectURL(
-    new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+    new Blob([raw], { type: "application/json" }),
   );
   const link = document.createElement("a");
   link.href = url;
-  link.download = "my-dashboard-backup.json";
+  link.download = filename;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

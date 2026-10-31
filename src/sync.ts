@@ -1,6 +1,7 @@
 import type { DashboardData } from "./model.ts";
 import { createInitialData } from "./initialData.ts";
 import { restoreData, STORAGE_KEY } from "./storage.ts";
+import { recoverySources } from "./recovery.ts";
 
 export type CloudSnapshot = {
   data: DashboardData;
@@ -39,6 +40,7 @@ type Cache = {
   revision: number;
   lastSyncedAt: string;
   backups: Backup[];
+  recoveryDraft?: boolean;
 };
 export type SyncView = {
   data: DashboardData;
@@ -48,6 +50,8 @@ export type SyncView = {
   remote: CloudSnapshot | null;
   lastSyncedAt: string;
   backups: Backup[];
+  recoveryDraft: boolean;
+  guestReviewNeeded: boolean;
 };
 type Storage = Pick<globalThis.Storage, "getItem" | "setItem">;
 const same = (a: unknown, b: unknown) =>
@@ -93,6 +97,8 @@ export class DashboardStore {
       remote: null,
       lastSyncedAt: "",
       backups: [],
+      recoveryDraft: false,
+      guestReviewNeeded: false,
     };
   }
   getSnapshot = () => this.view;
@@ -147,6 +153,7 @@ export class DashboardStore {
     try {
       const raw = this.storage.getItem(this.key);
       const saved = raw ? JSON.parse(raw) : null;
+      const guest = this.view.data;
       if (
         saved &&
         (!Number.isSafeInteger(saved.revision) ||
@@ -165,6 +172,7 @@ export class DashboardStore {
               ...b,
               data: restoreData(b.data),
             })),
+            ...(saved.recoveryDraft === true ? { recoveryDraft: true } : {}),
           }
         : {
             data: this.guest().data,
@@ -181,6 +189,13 @@ export class DashboardStore {
         remote: null,
         lastSyncedAt: this.cache.lastSyncedAt,
         backups: this.cache.backups,
+        recoveryDraft: !!this.cache.recoveryDraft,
+        guestReviewNeeded:
+          !!saved &&
+          !same(guest, createInitialData()) &&
+          !same(guest, this.cache.data) &&
+          this.storage.getItem(`${this.key}:guest-reviewed`) !==
+            JSON.stringify(guest),
       });
       // Never replace an unreadable legacy store. A new account cache is independent.
       this.protectedStorage = false;
@@ -214,6 +229,7 @@ export class DashboardStore {
       base: snapshot.data,
       revision: snapshot.revision,
       lastSyncedAt: new Date().toISOString(),
+      recoveryDraft: false,
     };
     this.emit({
       data: snapshot.data,
@@ -221,6 +237,7 @@ export class DashboardStore {
       message: "",
       remote: snapshot,
       lastSyncedAt: this.cache.lastSyncedAt,
+      recoveryDraft: false,
     });
     this.persist();
   }
@@ -251,6 +268,23 @@ export class DashboardStore {
       const snapshot = await remote.read();
       if (epoch !== this.epoch || !this.cache) return;
       this.emit({ remote: snapshot, message: "" });
+      if (this.cache.recoveryDraft) {
+        this.emit({
+          phase: "conflict",
+          recoveryDraft: true,
+          message:
+            "복구 초안을 이 기기에만 열었습니다. 온라인 기록은 아직 바꾸지 않았습니다. 내용을 확인한 뒤 반영할 수 있습니다.",
+        });
+        return;
+      }
+      if (this.view.guestReviewNeeded) {
+        this.emit({
+          phase: "choice",
+          message:
+            "로그인 전 이 브라우저에 별도 기록이 있습니다. ‘기록 복구’에서 먼저 최근 내용을 확인해 주세요.",
+        });
+        return;
+      }
       if (snapshot && same(snapshot.data, this.cache.data)) {
         this.adopt(snapshot);
       } else if (!this.cache.base) {
@@ -286,12 +320,14 @@ export class DashboardStore {
         base: saved.data,
         revision: saved.revision,
         lastSyncedAt: new Date().toISOString(),
+        recoveryDraft: false,
       };
       this.emit({
         phase: this.dirty() ? "pending" : "saved",
         remote: saved,
         message: "",
         lastSyncedAt: this.cache.lastSyncedAt,
+        recoveryDraft: false,
       });
       this.persist();
     } catch (error) {
@@ -319,6 +355,7 @@ export class DashboardStore {
       return false;
     if (!this.backup(this.cache.data, "온라인 기록을 불러오기 전 이 기기 기록"))
       return false;
+    if (!this.ackGuest()) return false;
     this.adopt(this.view.remote);
     return true;
   };
@@ -345,6 +382,7 @@ export class DashboardStore {
         return;
       if (!this.backup(this.cache.data, "이 기기 기록 온라인 연결 시점"))
         return;
+      if (!this.ackGuest()) return;
       await this.send(remote, latest?.revision ?? 0, epoch);
     } catch {
       if (epoch === this.epoch)
@@ -355,6 +393,70 @@ export class DashboardStore {
         });
     } finally {
       if (this.busyEpoch === epoch) this.busyEpoch = null;
+    }
+  };
+  private ackGuest() {
+    try {
+      const raw = this.storage.getItem(STORAGE_KEY);
+      if (!raw) return true;
+      const guest = restoreData(JSON.parse(raw));
+      if (
+        this.view.guestReviewNeeded &&
+        !this.backup(guest, "로그인 전 별도 기기 기록 확인 시점")
+      )
+        return false;
+      this.storage.setItem(`${this.key}:guest-reviewed`, JSON.stringify(guest));
+      this.emit({ guestReviewNeeded: false });
+      return true;
+    } catch {
+      this.emit({
+        storageError:
+          "로그인 전 기기 기록을 확인·보관하지 못해 교체를 중단했습니다. 원본을 먼저 내려받아 주세요.",
+      });
+      return false;
+    }
+  }
+  getRecoverySources = () =>
+    recoverySources(this.storage, this.cache?.backups ?? []);
+  stageRecovery = (id: string, expectedRaw: string) => {
+    if (
+      !this.cache ||
+      !this.remote ||
+      this.protectedStorage ||
+      this.busyEpoch === this.epoch
+    )
+      throw new Error("이 계정의 기록 확인이 끝난 뒤 복구 초안을 열어 주세요.");
+    const source = this.getRecoverySources().find((source) => source.id === id);
+    if (!source?.data || source.raw !== expectedRaw)
+      throw new Error(
+        "복구 사본을 읽지 못했거나 내용이 바뀌었습니다. 사본 목록을 새로 확인해 주세요.",
+      );
+    const recovered = restoreData(source.data);
+    if (!this.backup(this.cache.data, "복구 초안을 열기 전 현재 기록"))
+      throw new Error(
+        "현재 기록을 백업하지 못해 복구를 중단했습니다. JSON 파일을 먼저 내려받아 주세요.",
+      );
+    const before = this.cache,
+      previous = this.view;
+    this.cache = { ...this.cache, data: recovered, recoveryDraft: true };
+    this.emit({
+      data: recovered,
+      phase: "conflict",
+      recoveryDraft: true,
+      message:
+        "복구 초안을 이 기기에만 열었습니다. 온라인 기록은 아직 바꾸지 않았습니다. HOME과 상세 화면에서 내용을 확인해 주세요.",
+    });
+    if (!this.persist()) {
+      this.cache = before;
+      this.emit({
+        data: previous.data,
+        phase: previous.phase,
+        recoveryDraft: previous.recoveryDraft,
+        message: previous.message,
+      });
+      throw new Error(
+        "복구 초안을 기기에 저장하지 못했습니다. 원본 파일을 먼저 내려받아 주세요.",
+      );
     }
   };
 }
