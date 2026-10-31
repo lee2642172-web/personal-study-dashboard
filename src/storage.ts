@@ -191,35 +191,37 @@ export function validData(v: unknown): v is DashboardData {
     (v.tasks as unknown[]).every(validTask)
   );
 }
-export const browserRepository: DashboardRepository = {
-  load() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const data: unknown = JSON.parse(raw);
-    // Additive migration: earlier V1 records represented completed entries.
-    if (object(data) && Array.isArray(data.logs))
-      data.logs = data.logs.map((l) =>
-        object(l) && l.completed === undefined ? { ...l, completed: true } : l,
-      );
-    if (!validData(data))
-      throw new Error(
-        "저장된 데이터 형식을 읽을 수 없습니다. 원본을 보존하며 저장을 중단했습니다.",
-      );
-    return normalizeVocabularyDayRanges(
-      includeVocabularies(
-        includeFinancialAccounting(
-          includeCostManagementAccounting(
-            includeCustomsLawIntro(
-              includeDomesticConsumptionTax(
-                includeCustomsTradeEnglish(
-                  removeCancelledDayReviews(connectEbsGroup(data)),
-                ),
+export function restoreData(value: unknown): DashboardData {
+  const data: unknown = structuredClone(value);
+  // Additive migration: earlier V1 records represented completed entries.
+  if (object(data) && Array.isArray(data.logs))
+    data.logs = data.logs.map((l) =>
+      object(l) && l.completed === undefined ? { ...l, completed: true } : l,
+    );
+  if (!validData(data))
+    throw new Error(
+      "저장된 데이터 형식을 읽을 수 없습니다. 원본을 보존하며 저장을 중단했습니다.",
+    );
+  return normalizeVocabularyDayRanges(
+    includeVocabularies(
+      includeFinancialAccounting(
+        includeCostManagementAccounting(
+          includeCustomsLawIntro(
+            includeDomesticConsumptionTax(
+              includeCustomsTradeEnglish(
+                removeCancelledDayReviews(connectEbsGroup(data)),
               ),
             ),
           ),
         ),
       ),
-    );
+    ),
+  );
+}
+export const browserRepository: DashboardRepository = {
+  load() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? restoreData(JSON.parse(raw)) : null;
   },
   save(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));

@@ -1,5 +1,5 @@
 import { VocabularyPage } from "./Vocabulary";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   BrowserRouter,
@@ -29,6 +29,7 @@ import { EbsPage } from "./Ebs";
 import { TaskDetailPage } from "./Tasks";
 import { CalendarPage } from "./Calendar";
 import { DataProvider, useData } from "./state";
+import { SyncButton, SyncBanner, SyncSettings } from "./SyncSettings";
 import {
   Home,
   Category,
@@ -54,7 +55,8 @@ const navigation = [
   { path: "/goals", label: "목표 관리", icon: Target },
 ];
 function App() {
-  const { data, storageError } = useData();
+  const { data, storageError, cloud } = useData();
+  const [syncOpen, setSyncOpen] = useState(false);
   const location = useLocation();
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -121,7 +123,10 @@ function App() {
         <div className="profile">
           <span className="avatar">M</span>
           <div>
-            My workspace<small>개인용 · 이 브라우저에 저장</small>
+            My workspace
+            <small>
+              {cloud.user ? "계정별 온라인 저장" : "로그인 전 · 기기에 저장"}
+            </small>
           </div>
         </div>
       </aside>
@@ -131,12 +136,10 @@ function App() {
             나의 워크스페이스 <ChevronRight size={13} />
             <strong>{title}</strong>
           </span>
-          <span className="sample">
-            <span />
-            {storageError ? "저장 주의" : "로컬 저장 · 온라인 동기화 없음"}
-          </span>
+          <SyncButton onOpen={() => setSyncOpen(true)} />
         </header>
         <div className="page">
+          <SyncBanner onOpen={() => setSyncOpen(true)} />
           {storageError && (
             <div className="storage-alert" role="alert">
               {storageError}
@@ -148,6 +151,7 @@ function App() {
               </button>
             </div>
           )}
+          {syncOpen && <SyncSettings onClose={() => setSyncOpen(false)} />}
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/calendar" element={<CalendarPage />} />

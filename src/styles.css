@@ -5584,3 +5584,207 @@ footer > span:first-child {
   font-size: 10px;
   white-space: nowrap;
 }
+
+/* Online account storage: status follows actual server acknowledgement. */
+.sync-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  color: #7e91ad;
+  font-size: 11px;
+  text-align: right;
+  max-width: 58%;
+}
+.sync-trigger[data-phase="saved"] {
+  color: #5e9589;
+}
+.sync-trigger[data-phase="offline"],
+.sync-trigger[data-phase="conflict"],
+.sync-trigger[data-phase="error"] {
+  color: #b18c5e;
+}
+.sync-trigger svg {
+  flex-shrink: 0;
+}
+.sync-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 15px 18px;
+  border: 1px solid #e9dfcd;
+  border-radius: 12px;
+  background: #fffaf2;
+  color: #917950;
+  font-size: 12px;
+}
+.sync-settings {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding: 22px 26px;
+}
+.sync-intro {
+  color: #758ba7;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.sync-settings h3 {
+  font-size: 14px;
+  color: #506886;
+}
+.sync-settings .micro-note {
+  line-height: 1.9;
+  margin: 0;
+}
+.sync-setup-steps {
+  background: #f6f8fc;
+  border-radius: 10px;
+  padding: 17px;
+}
+.sync-setup-steps ol {
+  padding-left: 20px;
+  margin: 12px 0 0;
+  color: #7b8fa9;
+  font-size: 12px;
+  line-height: 1.9;
+}
+.sync-setup-steps li + li {
+  margin-top: 12px;
+}
+.sync-setup-steps a {
+  color: #547dbb;
+  text-decoration: underline;
+}
+.sync-setup-steps code {
+  overflow-wrap: anywhere;
+}
+.sync-setup-steps .secondary-button {
+  display: flex;
+  margin: 8px 0;
+}
+.sync-setup-steps summary {
+  cursor: pointer;
+}
+.sync-sql {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  padding: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.sync-form {
+  display: grid;
+  gap: 13px;
+}
+.sync-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: #788ca8;
+}
+.sync-form input {
+  min-width: 0;
+  width: 100%;
+}
+.sync-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.sync-account strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.sync-state {
+  font-size: 11px;
+  color: #889cb6;
+}
+.sync-state.phase-saved {
+  color: #5e9589;
+}
+.sync-choice {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid #e5ebf5;
+  padding-top: 16px;
+}
+.sync-choice > p {
+  font-size: 12px;
+  line-height: 1.9;
+  color: #8496b0;
+}
+.sync-record-choice {
+  display: grid;
+  gap: 10px;
+  padding: 15px;
+  background: #f6f8fc;
+  border-radius: 10px;
+}
+.sync-record-choice > strong {
+  font-size: 12px;
+  color: #627c9d;
+}
+.sync-record-choice .text-button {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.sync-data-summary,
+.sync-caution,
+.sync-notice {
+  color: #8094af;
+  font-size: 12px;
+  line-height: 1.9;
+}
+.sync-caution {
+  color: #a38b65;
+}
+.sync-notice {
+  color: #5e9589;
+}
+.sync-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.sync-backups {
+  border-top: 1px solid #e5ebf5;
+  padding-top: 14px;
+  color: #8195ae;
+  font-size: 12px;
+}
+.sync-backups summary {
+  cursor: pointer;
+}
+.sync-backups > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+}
+.sync-backups small {
+  display: block;
+  font-size: 10px;
+  margin-top: 5px;
+}
+@media (max-width: 650px) {
+  .sync-trigger {
+    font-size: 10px;
+  }
+  .sync-banner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .sync-settings {
+    padding: 18px;
+  }
+}
