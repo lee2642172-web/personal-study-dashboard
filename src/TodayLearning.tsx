@@ -8,6 +8,7 @@ import { workLabel } from "./taskWork";
 import { fieldName, type Material, type StudyLog } from "./model";
 import { isEbsCourse } from "./ebs";
 import { ActivityLabels } from "./ui";
+import { QuickActivity } from "./QuickActivity";
 
 function itemLabel(log: StudyLog, material?: Material): string {
   if (!log.item) return "";
@@ -70,6 +71,7 @@ export function TodayLearning({ compact = false }: { compact?: boolean }) {
           </div>
         )}
       </header>
+      <QuickActivity />
       {entryCount ? (
         <ul
           className="today-learning-list"

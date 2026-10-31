@@ -5888,3 +5888,90 @@ footer > span:first-child {
   flex: 0 0 auto;
   margin-top: 4px;
 }
+
+/* A completed one-line activity, entered directly in today's records. */
+.today-quick-record {
+  margin-bottom: 12px;
+}
+.today-quick-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px auto;
+  gap: 8px;
+  align-items: center;
+}
+.today-quick-form label {
+  min-width: 0;
+}
+.today-quick-form input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid #dce6f3;
+  border-radius: 8px;
+  background: #fafcfe;
+  color: #526c8f;
+  padding: 10px;
+  font-size: 12px;
+}
+.today-quick-form input::placeholder {
+  color: #a1afc3;
+}
+.today-quick-form .primary-button {
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.today-quick-minutes {
+  position: relative;
+}
+.today-quick-minutes input {
+  padding-right: 26px;
+  appearance: textfield;
+}
+.today-quick-minutes input::-webkit-inner-spin-button,
+.today-quick-minutes input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.today-quick-minutes > span:last-child {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a6be;
+  font-size: 11px;
+  pointer-events: none;
+}
+.today-quick-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-top: 8px;
+}
+.today-quick-feedback p {
+  margin: 0;
+  color: #91a2bc;
+  font-size: 10px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.today-quick-feedback button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+}
+@media (max-width: 550px) {
+  .today-quick-form {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .today-quick-title {
+    grid-column: 1 / -1;
+  }
+  .today-quick-form input {
+    font-size: 16px;
+  }
+}

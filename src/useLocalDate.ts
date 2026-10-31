@@ -3,7 +3,7 @@ import { localDate } from "./dates";
 
 /** Refresh open tabs after local midnight and when the browser returns to the foreground. */
 export function useLocalDate() {
-  const [date, setDate] = useState(localDate);
+  const [, setDate] = useState(localDate);
   useEffect(() => {
     const refresh = () => setDate(localDate());
     const timer = window.setInterval(refresh, 60_000);
@@ -15,5 +15,5 @@ export function useLocalDate() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, []);
-  return date;
+  return localDate();
 }
