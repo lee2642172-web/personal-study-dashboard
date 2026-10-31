@@ -79,6 +79,10 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const [replace, setReplace] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<"email" | "password">("email");
+  const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [nextEmailAt, setNextEmailAt] = useState(0);
   const [now, setNow] = useState(Date.now());
   const emailWait = Math.max(0, Math.ceil((nextEmailAt - now) / 1000));
@@ -125,8 +129,8 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
     <Dialog title="온라인 저장 및 기기 연결" onClose={onClose}>
       <div className="sync-settings">
         <p className="sync-intro">
-          같은 계정으로 로그인하면 PC와 iPad에서 학습 기록·진도·과업·일정을 함께
-          사용합니다.
+          같은 계정으로 로그인하면 PC·태블릿·휴대폰에서 학습
+          기록·진도·과업·일정을 함께 사용합니다.
         </p>
         {!cloud.config ? (
           <>
@@ -203,11 +207,50 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
           </>
         ) : !cloud.user ? (
           <>
+            <div
+              className="sync-login-methods"
+              role="group"
+              aria-label="로그인 방식"
+            >
+              <button
+                type="button"
+                disabled={working}
+                aria-pressed={loginMethod === "email"}
+                onClick={() => {
+                  setLoginMethod("email");
+                  setPassword("");
+                  setError("");
+                  setNotice("");
+                }}
+              >
+                이메일 링크
+              </button>
+              <button
+                type="button"
+                disabled={working}
+                aria-pressed={loginMethod === "password"}
+                onClick={() => {
+                  setLoginMethod("password");
+                  setError("");
+                  setNotice("");
+                }}
+              >
+                비밀번호 로그인
+              </button>
+            </div>
             <form
               className="sync-form"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (emailWait || working) return;
+                if (working) return;
+                if (loginMethod === "password") {
+                  void action(async () => {
+                    await cloud.loginPassword(email, password);
+                    setPassword("");
+                  });
+                  return;
+                }
+                if (emailWait) return;
                 void action(async () => {
                   await cloud.login(email);
                   setNow(Date.now());
@@ -228,13 +271,34 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
                   placeholder="다른 기기에서도 사용할 같은 이메일"
                 />
               </label>
+              {loginMethod === "password" && (
+                <label>
+                  비밀번호
+                  <input
+                    type="password"
+                    required
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </label>
+              )}
               <button
                 className="primary-button"
-                disabled={working || emailWait > 0}
+                disabled={working || (loginMethod === "email" && emailWait > 0)}
               >
-                {emailWait ? `${emailWait}초 후 다시 요청` : "이메일로 로그인"}
+                {loginMethod === "password"
+                  ? "비밀번호로 로그인"
+                  : emailWait
+                    ? `${emailWait}초 후 다시 요청`
+                    : "이메일로 로그인"}
               </button>
             </form>
+            <p className="micro-note">
+              로그인 중인 PC·iPad의 ‘비밀번호 설정·변경’에서 비밀번호를 만든 뒤,
+              같은 이메일로 비밀번호 로그인을 이용할 수 있습니다. 비밀번호
+              로그인은 인증 메일을 요청하지 않습니다.
+            </p>
             <p className="micro-note">
               로그인 전의 기록도 기기에 보관됩니다. 로그인 후 기존 기록을 연결할
               수 있습니다.
@@ -255,6 +319,51 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
                 {syncLabels[phase]}
               </span>
             </div>
+            <details className="sync-password-settings">
+              <summary>비밀번호 설정·변경</summary>
+              <p className="micro-note">
+                현재 계정에 비밀번호를 설정하면 다른 기기에서 인증 메일 없이
+                로그인할 수 있습니다. 기존 학습 기록은 그대로 사용합니다.
+              </p>
+              <form
+                className="sync-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (working) return;
+                  void action(async () => {
+                    await cloud.setPassword(newPassword, confirmation);
+                    setNewPassword("");
+                    setConfirmation("");
+                  }, "비밀번호를 저장했습니다. 휴대폰에서 같은 이메일과 이 비밀번호로 로그인하세요.");
+                }}
+              >
+                <label>
+                  새 비밀번호
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </label>
+                <label>
+                  새 비밀번호 확인
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    value={confirmation}
+                    onChange={(e) => setConfirmation(e.target.value)}
+                  />
+                </label>
+                <button className="primary-button" disabled={working}>
+                  비밀번호 저장
+                </button>
+              </form>
+            </details>
             {lastSyncedAt && (
               <p className="micro-note">
                 최근 온라인 확인:{" "}

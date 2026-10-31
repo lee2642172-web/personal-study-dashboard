@@ -9,6 +9,7 @@ import {
 import type { User } from "@supabase/supabase-js";
 import type { DashboardData } from "./model";
 import { emailLoginError } from "./loginEmail";
+import { loginWithPassword, setAccountPassword } from "./passwordAuth";
 import { DashboardStore, type SyncView } from "./sync";
 import {
   CLOUD_CONFIG_KEY,
@@ -29,6 +30,8 @@ type State = SyncView & {
     configure: (config: CloudConfig) => void;
     clearConfig: () => void;
     login: (email: string) => Promise<void>;
+    loginPassword: (email: string, password: string) => Promise<void>;
+    setPassword: (password: string, confirmation: string) => Promise<void>;
     logout: () => Promise<void>;
     refresh: () => Promise<void>;
     useLocal: () => Promise<void>;
@@ -177,6 +180,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
           throw emailLoginError(error);
         });
       if (error) throw emailLoginError(error);
+    },
+    async loginPassword(email, password) {
+      if (!client) throw new Error("먼저 온라인 저장 연결을 설정해 주세요.");
+      await loginWithPassword(client, email, password);
+    },
+    async setPassword(password, confirmation) {
+      if (!client || !user)
+        throw new Error("로그인 중인 기기에서 비밀번호를 설정해 주세요.");
+      await setAccountPassword(client, password, confirmation);
     },
     async logout() {
       if (!client) return;

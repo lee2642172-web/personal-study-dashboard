@@ -5788,3 +5788,34 @@ footer > span:first-child {
     padding: 18px;
   }
 }
+
+.sync-login-methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sync-login-methods > button {
+  padding: 9px 14px;
+  border: 1px solid #dce6f3;
+  border-radius: 8px;
+  color: #889bb6;
+  font-size: 12px;
+}
+.sync-login-methods > button[aria-pressed="true"] {
+  background: #edf3ff;
+  border-color: #bdcfea;
+  color: #5b7fb8;
+}
+.sync-password-settings {
+  border: 1px solid #e3eaf4;
+  border-radius: 10px;
+  padding: 15px;
+}
+.sync-password-settings > summary {
+  color: #6e88a9;
+  font-size: 12px;
+  cursor: pointer;
+}
+.sync-settings .sync-password-settings > .micro-note {
+  margin: 12px 0;
+}
