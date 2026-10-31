@@ -12,6 +12,7 @@ import { fields, type FieldId } from "./model";
 import { getDayBook, isDayBook } from "./dayLearning";
 import { Progress } from "./ui";
 import { englishMaterialProgress } from "./englishProgress";
+import { formatT, formatDuration, formatTimeT } from "./timeUnits";
 
 export function StudyTimeSummary() {
   const { data } = useData(),
@@ -20,19 +21,27 @@ export function StudyTimeSummary() {
   return (
     <section className="study-time-summary" aria-label="학습시간 요약">
       {[
-        ["오늘 학습시간", summary.today, today.replaceAll("-", ".")],
-        ["이번 주 학습시간", summary.week, "월요일 ~ 일요일"],
-        [
-          "이번 달 학습시간",
-          summary.month,
-          `${Number(today.slice(5, 7))}월 1일 ~ 오늘`,
-        ],
-      ].map(([label, minutes, note]) => (
+        {
+          label: "오늘 학습시간",
+          minutes: summary.today,
+          note: today.replaceAll("-", "."),
+        },
+        {
+          label: "이번 주 학습시간",
+          minutes: summary.week,
+          note: "월요일 ~ 일요일",
+        },
+        {
+          label: "이번 달 학습시간",
+          minutes: summary.month,
+          note: `${Number(today.slice(5, 7))}월 1일 ~ 오늘`,
+        },
+      ].map(({ label, minutes, note }) => (
         <article key={label} className="dashboard-time-stat">
           <span>{label}</span>
           <strong>
-            {minutes}
-            <small>분</small>
+            <span>{formatT(minutes)}</span>{" "}
+            <small>({formatDuration(minutes)})</small>
           </strong>
           <p>{note}</p>
         </article>
@@ -71,7 +80,7 @@ export function StudyTimeChart() {
           <p className="eyebrow">ACTUAL STUDY TIME</p>
           <h2>날짜별 학습시간</h2>
         </div>
-        <strong className="chart-total">{sum}분</strong>
+        <strong className="chart-total">{formatTimeT(sum)}</strong>
       </div>
       <div className="study-chart-controls">
         <label>
@@ -119,10 +128,10 @@ export function StudyTimeChart() {
       <div className="chart-readout">
         <output aria-live="polite">
           {selected
-            ? `${selected.date.replaceAll("-", ".")} · ${selected.minutes}분`
+            ? `${selected.date.replaceAll("-", ".")} · ${formatTimeT(selected.minutes)}`
             : "기록 없음"}
         </output>
-        <small>{max ? `최대 ${max}분` : "학습시간 기록 없음"}</small>
+        <small>{max ? `최대 ${formatTimeT(max)}` : "학습시간 기록 없음"}</small>
       </div>
       <div
         className={`study-bars ${series.length > 7 ? "is-dense" : ""}`}
@@ -133,8 +142,8 @@ export function StudyTimeChart() {
           <button
             key={point.date}
             className={`study-bar ${selected?.date === point.date ? "is-selected" : ""}`}
-            aria-label={`${point.date} 학습시간 ${point.minutes}분`}
-            title={`${point.date} · ${point.minutes}분`}
+            aria-label={`${point.date} 학습시간 ${formatTimeT(point.minutes)}`}
+            title={`${point.date} · ${formatTimeT(point.minutes)}`}
             aria-pressed={selected?.date === point.date}
             onMouseEnter={() => setSelection(point.date)}
             onFocus={() => setSelection(point.date)}
@@ -163,6 +172,7 @@ export function StudyTimeChart() {
         ))}
       </div>
       <p className="micro-note">
+        1T = 90분 · T는 소수 둘째 자리 반올림 ·{" "}
         {period === "month" ? "선택한 월의 일별 기록 · " : ""}실제 기록일 기준 ·
         학습·할 일·과업 작업시간을 함께 합산합니다. 막대를 누르면 날짜별 시간을
         확인할 수 있어요.

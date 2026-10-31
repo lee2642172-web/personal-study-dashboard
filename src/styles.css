@@ -5975,3 +5975,159 @@ footer > span:first-child {
     font-size: 16px;
   }
 }
+
+/* Dashboard duration display keeps the original minute data and shows 90m = 1T. */
+.dashboard-time-stat > strong {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 7px;
+}
+.dashboard-time-stat > strong > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.dashboard-time-stat > strong > small {
+  margin: 0;
+  font-size: 12px;
+  color: #879bb8;
+  letter-spacing: 0;
+  line-height: 1.8;
+}
+.today-learning-time > strong {
+  display: block;
+  font-size: 13px;
+}
+.today-learning-time > small {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.8;
+  color: #91a2bb;
+}
+.study-chart .dashboard-panel-heading {
+  flex-wrap: wrap;
+}
+.study-chart .chart-total {
+  font-size: 14px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.chart-readout {
+  flex-wrap: wrap;
+}
+.chart-readout output {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.home-todo-row {
+  grid-template-columns: 36px minmax(0, 1fr) 96px;
+}
+.home-todo-add {
+  margin-bottom: 12px;
+}
+.home-todo-add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px auto;
+  gap: 8px;
+  align-items: center;
+}
+.home-todo-add-title {
+  min-width: 0;
+}
+.home-todo-add-title > input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid #dce6f3;
+  border-radius: 8px;
+  color: #526c8f;
+  font-size: 12px;
+  background: #fafcfe;
+}
+.home-todo-add-title > input::placeholder {
+  color: #a1afc3;
+}
+.home-todo-add-form .primary-button {
+  min-height: 44px;
+  font-size: 12px;
+  padding: 10px 12px;
+}
+.minute-stepper {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  border: 1px solid #dce6f3;
+  border-radius: 8px;
+  background: #fafcfe;
+  overflow: hidden;
+}
+.minute-stepper-input {
+  display: block;
+  position: relative;
+  min-width: 0;
+  align-self: center;
+}
+.dashboard-v1 .minute-stepper-input > input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  margin: 0;
+  padding: 9px 21px 9px 7px;
+  border-radius: 0;
+  background: transparent;
+  font-size: 12px;
+  color: #617a9d;
+  appearance: textfield;
+}
+.minute-stepper-input > input::-webkit-inner-spin-button,
+.minute-stepper-input > input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.minute-stepper-input > span:last-child {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a6be;
+  font-size: 10px;
+  pointer-events: none;
+}
+.minute-stepper-arrows {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #e4ebf4;
+}
+.minute-stepper-arrows > button {
+  display: grid;
+  place-items: center;
+  min-height: 22px;
+  padding: 0;
+  color: #7c96bb;
+  background: #f4f7fc;
+  touch-action: manipulation;
+}
+.minute-stepper-arrows > button + button {
+  border-top: 1px solid #e4ebf4;
+}
+.minute-stepper-arrows > button:hover {
+  background: #eaf0fa;
+}
+@media (max-width: 550px) {
+  .home-todo-add-form {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .home-todo-add-title {
+    grid-column: 1 / -1;
+  }
+  .home-todo-add-title > input,
+  .dashboard-v1 .minute-stepper-input > input {
+    font-size: 16px;
+  }
+  .minute-stepper-arrows > button {
+    min-height: 26px;
+  }
+}

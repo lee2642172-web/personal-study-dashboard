@@ -9,6 +9,7 @@ import { fieldName, type Material, type StudyLog } from "./model";
 import { isEbsCourse } from "./ebs";
 import { ActivityLabels } from "./ui";
 import { QuickActivity } from "./QuickActivity";
+import { formatT, formatDuration, formatTimeT } from "./timeUnits";
 
 function itemLabel(log: StudyLog, material?: Material): string {
   if (!log.item) return "";
@@ -63,7 +64,7 @@ export function TodayLearning({ compact = false }: { compact?: boolean }) {
             </span>
             <strong>
               {measured.length
-                ? `${totalMinutes}분`
+                ? formatTimeT(totalMinutes)
                 : entryCount
                   ? "시간 미입력"
                   : "미기록"}
@@ -101,9 +102,14 @@ export function TodayLearning({ compact = false }: { compact?: boolean }) {
                     <span
                       className={`today-learning-time ${entry.minutes === null ? "is-unknown" : ""}`}
                     >
-                      {entry.minutes === null
-                        ? "시간 미입력"
-                        : `${entry.minutes}분`}
+                      {entry.minutes === null ? (
+                        "시간 미입력"
+                      ) : (
+                        <>
+                          <strong>{formatT(entry.minutes)}</strong>
+                          <small>({formatDuration(entry.minutes)})</small>
+                        </>
+                      )}
                     </span>
                     <ArrowUpRight size={15} aria-hidden="true" />
                   </Link>
@@ -143,7 +149,14 @@ export function TodayLearning({ compact = false }: { compact?: boolean }) {
                   <span
                     className={`today-learning-time ${log.minutes === null ? "is-unknown" : ""}`}
                   >
-                    {log.minutes === null ? "시간 미입력" : `${log.minutes}분`}
+                    {log.minutes === null ? (
+                      "시간 미입력"
+                    ) : (
+                      <>
+                        <strong>{formatT(log.minutes)}</strong>
+                        <small>({formatDuration(log.minutes)})</small>
+                      </>
+                    )}
                   </span>
                   <ArrowUpRight size={15} aria-hidden="true" />
                 </Link>

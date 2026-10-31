@@ -5,11 +5,12 @@ import { newId } from "./model";
 import { localDate } from "./dates";
 import { recordQuickActivity } from "./quickActivity";
 import { deleteTodo } from "./todos";
+import { DEFAULT_RECORD_MINUTES, formatTimeT } from "./timeUnits";
 
 export function QuickActivity() {
   const { data, update } = useData();
   const [title, setTitle] = useState(""),
-    [minutes, setMinutes] = useState("");
+    [minutes, setMinutes] = useState(String(DEFAULT_RECORD_MINUTES));
   const [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   const [last, setLast] = useState<string | null>(null);
@@ -39,9 +40,9 @@ export function QuickActivity() {
       );
       setLast(id);
       setTitle("");
-      setMinutes("");
+      setMinutes(String(DEFAULT_RECORD_MINUTES));
       setError("");
-      setNotice(`‘${text}’ · ${time}분 기록을 추가했습니다.`);
+      setNotice(`‘${text}’ · ${formatTimeT(time)} 기록을 추가했습니다.`);
       draftId.current = newId();
     } finally {
       queueMicrotask(() => {
@@ -88,14 +89,18 @@ export function QuickActivity() {
           />
           <span aria-hidden="true">분</span>
         </label>
-        <button type="submit" className="primary-button" disabled={!title.trim()}>
+        <button
+          type="submit"
+          className="primary-button"
+          disabled={!title.trim()}
+        >
           <Plus size={15} />
           기록 추가
         </button>
       </form>
       <div className="today-quick-feedback">
         <p role="status" aria-live="polite">
-          {notice || "오늘 날짜로 기록합니다. 시간을 비우면 0분입니다."}
+          {notice || "기본 90분 = 1T · 오늘 날짜로 기록하며, 비우면 0분입니다."}
         </p>
         {canUndo && (
           <button

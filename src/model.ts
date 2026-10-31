@@ -111,6 +111,7 @@ export type TodoItem = {
   title: string;
   dueDate: string;
   note: string;
+  plannedMinutes?: number;
   completion: { date: string; minutes: number } | null;
 };
 export type TaskStep = {

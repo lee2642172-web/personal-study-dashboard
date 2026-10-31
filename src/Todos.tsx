@@ -122,7 +122,9 @@ function TodoRow({
   onNotice: (message: string) => void;
 }) {
   const { data, update } = useData();
-  const [minutes, setMinutes] = useState(""),
+  const [minutes, setMinutes] = useState(
+      item.plannedMinutes === undefined ? "" : String(item.plannedMinutes),
+    ),
     [error, setError] = useState("");
   function complete(e: FormEvent) {
     e.preventDefault();

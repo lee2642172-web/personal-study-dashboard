@@ -14,7 +14,8 @@ export function validTodo(v: unknown): v is TodoItem {
     ) ||
     !String(v.id).trim() ||
     !String(v.title).trim() ||
-    (v.dueDate !== "" && !isDateString(String(v.dueDate)))
+    (v.dueDate !== "" && !isDateString(String(v.dueDate))) ||
+    (v.plannedMinutes !== undefined && !validMinutes(v.plannedMinutes))
   )
     return false;
   return (
@@ -28,7 +29,13 @@ export function validTodo(v: unknown): v is TodoItem {
 
 export function addTodo(
   data: DashboardData,
-  input: { id: string; title: string; dueDate?: string; note?: string },
+  input: {
+    id: string;
+    title: string;
+    dueDate?: string;
+    note?: string;
+    plannedMinutes?: number;
+  },
 ): DashboardData {
   const item: TodoItem = {
     id: input.id,
@@ -36,10 +43,29 @@ export function addTodo(
     dueDate: input.dueDate ?? "",
     note: (input.note ?? "").trim(),
     completion: null,
+    ...(input.plannedMinutes !== undefined
+      ? { plannedMinutes: input.plannedMinutes }
+      : {}),
   };
   if (!validTodo(item) || data.todos?.some((t) => t.id === item.id))
     return data;
   return { ...data, todos: [...(data.todos ?? []), item] };
+}
+
+export function setTodoPlannedMinutes(
+  data: DashboardData,
+  id: string,
+  minutes: number,
+): DashboardData {
+  if (!validMinutes(minutes)) return data;
+  const item = data.todos?.find((todo) => todo.id === id);
+  if (!item || item.completion || item.plannedMinutes === minutes) return data;
+  return {
+    ...data,
+    todos: data.todos!.map((todo) =>
+      todo.id === id ? { ...todo, plannedMinutes: minutes } : todo,
+    ),
+  };
 }
 
 export function editTodo(
