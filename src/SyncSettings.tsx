@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Cloud, RefreshCw, Download } from "lucide-react";
 import { useData } from "./state";
 import { syncLabels } from "./sync";
+import { EmailLoginError } from "./loginEmail";
 import { exportData } from "./storage";
 import type { DashboardData } from "./model";
 import { Dialog } from "./ui";
@@ -78,6 +79,18 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const [replace, setReplace] = useState(false);
+  const [nextEmailAt, setNextEmailAt] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  const emailWait = Math.max(0, Math.ceil((nextEmailAt - now) / 1000));
+  useEffect(() => {
+    if (!nextEmailAt) return;
+    const timer = setInterval(() => {
+      const time = Date.now();
+      setNow(time);
+      if (time >= nextEmailAt) clearInterval(timer);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [nextEmailAt]);
   async function action(fn: () => void | Promise<void>, success = "") {
     setError("");
     setNotice("");
@@ -86,6 +99,10 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
       await fn();
       setNotice(success);
     } catch (e) {
+      if (e instanceof EmailLoginError && e.retryAfterSeconds) {
+        setNow(Date.now());
+        setNextEmailAt(Date.now() + e.retryAfterSeconds * 1000);
+      }
       setError(
         e instanceof Error
           ? e.message
@@ -190,10 +207,12 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
               className="sync-form"
               onSubmit={(e) => {
                 e.preventDefault();
-                void action(
-                  () => cloud.login(email),
-                  "로그인 메일을 보냈습니다. 이 기기에서 이메일의 로그인 링크를 열어 주세요.",
-                );
+                if (emailWait || working) return;
+                void action(async () => {
+                  await cloud.login(email);
+                  setNow(Date.now());
+                  setNextEmailAt(Date.now() + 60000);
+                }, "로그인 메일을 보냈습니다. 이 기기에서 이메일의 로그인 링크를 열어 주세요.");
               }}
             >
               <label>
@@ -202,13 +221,18 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
                   type="email"
                   required
                   autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="PC·iPad에서 사용할 같은 이메일"
+                  placeholder="다른 기기에서도 사용할 같은 이메일"
                 />
               </label>
-              <button className="primary-button" disabled={working}>
-                이메일로 로그인
+              <button
+                className="primary-button"
+                disabled={working || emailWait > 0}
+              >
+                {emailWait ? `${emailWait}초 후 다시 요청` : "이메일로 로그인"}
               </button>
             </form>
             <p className="micro-note">

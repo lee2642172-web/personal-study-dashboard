@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { User } from "@supabase/supabase-js";
 import type { DashboardData } from "./model";
+import { emailLoginError } from "./loginEmail";
 import { DashboardStore, type SyncView } from "./sync";
 import {
   CLOUD_CONFIG_KEY,
@@ -167,14 +168,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     },
     async login(email) {
       if (!client) throw new Error("먼저 온라인 저장 연결을 설정해 주세요.");
-      const { error } = await client.auth.signInWithOtp({
-        email: email.trim(),
-        options: { emailRedirectTo: window.location.origin + "/" },
-      });
-      if (error)
-        throw new Error(
-          "로그인 메일을 보내지 못했습니다. 이메일 주소·연결 설정을 확인하거나 잠시 후 다시 시도해 주세요.",
-        );
+      const { error } = await client.auth
+        .signInWithOtp({
+          email: email.trim(),
+          options: { emailRedirectTo: window.location.origin + "/" },
+        })
+        .catch((error: unknown) => {
+          throw emailLoginError(error);
+        });
+      if (error) throw emailLoginError(error);
     },
     async logout() {
       if (!client) return;
