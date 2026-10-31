@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Cloud, RefreshCw, Download } from "lucide-react";
+import { Cloud, RefreshCw } from "lucide-react";
 import { useData } from "./state";
 import { syncLabels } from "./sync";
 import { EmailLoginError } from "./loginEmail";
@@ -10,19 +10,14 @@ import { RecoveryPanel } from "./RecoveryPanel";
 import setupSql from "../supabase/setup.sql?raw";
 
 export function SyncButton({ onOpen }: { onOpen: () => void }) {
-  const { phase, storageError, cloud, recoveryDraft, guestReviewNeeded } =
-    useData();
+  const { phase, storageError, cloud } = useData();
   const label = storageError
     ? "저장 주의"
     : cloud.authLoading
       ? "로그인 확인 중"
       : cloud.config && !cloud.user
         ? "로그인하여 기록 연결"
-        : recoveryDraft && phase !== "saving"
-          ? "복구 초안 · 온라인 반영 전"
-          : guestReviewNeeded
-            ? "로그인 전 기기 기록 확인 필요"
-            : syncLabels[phase];
+        : syncLabels[phase];
   return (
     <button
       type="button"
@@ -37,24 +32,13 @@ export function SyncButton({ onOpen }: { onOpen: () => void }) {
   );
 }
 export function SyncBanner({ onOpen }: { onOpen: () => void }) {
-  const { phase, cloud, recoveryDraft, guestReviewNeeded } = useData();
-  if (
-    !cloud.user ||
-    !["choice", "conflict", "offline", "error"].includes(phase)
-  )
-    return null;
+  const { phase, cloud } = useData();
+  if (!cloud.user || !["offline", "error"].includes(phase)) return null;
   return (
     <div className="sync-banner" role="status">
       <span>
-        {recoveryDraft
-          ? "복구 초안을 이 기기에서 확인 중입니다. 온라인 기록은 아직 바꾸지 않았습니다."
-          : guestReviewNeeded
-            ? "로그인 전 이 기기에 별도 기록이 있습니다. ‘기록 복구’에서 최신 내용을 먼저 확인해 주세요."
-            : phase === "choice"
-              ? "처음 연결할 기록을 선택해 주세요. 기존 기록은 아직 온라인에 반영하지 않았습니다."
-              : phase === "conflict"
-                ? "다른 기기의 변경과 겹칩니다. 양쪽 기록을 확인해 주세요."
-                : "온라인 저장을 완료하지 못했습니다. 기기의 기록은 유지됩니다."}
+        연결이 복구되면 각 기기의 변경을 자동으로 합칩니다. 현재 기록은 기기에
+        보관됩니다.
       </span>
       <button className="secondary-button" onClick={onOpen}>
         기록 확인
@@ -72,31 +56,14 @@ function Summary({ data }: { data: DashboardData }) {
   );
 }
 export function SyncSettings({ onClose }: { onClose: () => void }) {
-  const {
-    data,
-    phase,
-    message,
-    lastSyncedAt,
-    remote,
-    backups,
-    cloud,
-    storageError,
-    recoveryDraft,
-    guestReviewNeeded,
-  } = useData();
+  const { data, phase, message, lastSyncedAt, backups, cloud, storageError } =
+    useData();
   const [url, setUrl] = useState(cloud.config?.url ?? ""),
     [key, setKey] = useState("");
   const [email, setEmail] = useState(""),
     [notice, setNotice] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
-  const [replace, setReplace] = useState(false);
-  const [cloudReplacementConfirmed, setCloudReplacementConfirmed] =
-    useState(false);
-  useEffect(
-    () => setCloudReplacementConfirmed(false),
-    [data, remote?.revision],
-  );
   const [loginMethod, setLoginMethod] = useState<"email" | "password">("email");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -338,6 +305,7 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
                 {syncLabels[phase]}
               </span>
             </div>
+            <Summary data={data} />
             <details className="sync-password-settings">
               <summary>비밀번호 설정·변경</summary>
               <p className="micro-note">
@@ -389,110 +357,6 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
                 {new Date(lastSyncedAt).toLocaleString("ko-KR")}
               </p>
             )}
-            {["choice", "conflict"].includes(phase) && (
-              <div className="sync-choice">
-                <h3>
-                  {phase === "conflict"
-                    ? "양쪽 기록이 달라 자동으로 덮어쓰지 않았습니다."
-                    : "처음 연결할 기록을 선택하세요."}
-                </h3>
-                <div className="sync-record-choice">
-                  <strong>
-                    {recoveryDraft
-                      ? "현재 이 기기의 복구 초안"
-                      : "현재 이 기기의 기록"}
-                  </strong>
-                  <Summary data={data} />
-                  <button
-                    className="text-button"
-                    onClick={() => exportData(data)}
-                  >
-                    <Download size={13} /> JSON 백업
-                  </button>
-                </div>
-                {remote ? (
-                  <div className="sync-record-choice">
-                    <strong>온라인에 저장된 기록</strong>
-                    <Summary data={remote.data} />
-                    <button
-                      className="text-button"
-                      onClick={() => exportData(remote.data)}
-                    >
-                      <Download size={13} /> JSON 백업
-                    </button>
-                    <p className="sync-caution">
-                      온라인 기록을 불러오면 현재 이 기기 화면의 기록 전체가
-                      온라인 사본으로 바뀝니다. 이 기기의 최신 기록이 자동으로
-                      합쳐지지 않습니다. 위 ‘기록 복구’에서 원본과 백업을 먼저
-                      확인해 주세요.
-                    </p>
-                    <label className="sync-replace-confirm">
-                      <input
-                        type="checkbox"
-                        checked={cloudReplacementConfirmed}
-                        onChange={(e) =>
-                          setCloudReplacementConfirmed(e.target.checked)
-                        }
-                      />
-                      이 기기의 최근 기록을 확인했으며 온라인 사본으로
-                      바꾸겠습니다.
-                    </label>
-                    <button
-                      className="primary-button"
-                      disabled={working || !cloudReplacementConfirmed}
-                      onClick={() =>
-                        void action(() => {
-                          if (!cloud.useCloud())
-                            throw new Error(
-                              "이 기기의 기록을 백업하지 못해 교체를 중단했습니다. 저장 공간을 확인해 주세요.",
-                            );
-                        }, "온라인 기록으로 화면을 바꿨습니다. 이전 이 기기 기록은 ‘기록 복구’에서 확인할 수 있습니다.")
-                      }
-                    >
-                      온라인 기록 불러오기
-                    </button>
-                  </div>
-                ) : (
-                  <p>
-                    아직 온라인 기록이 없습니다. 기록이 가장 많이 남아 있는
-                    기기에서 먼저 연결해 주세요.
-                  </p>
-                )}
-                {remote && !replace ? (
-                  <button
-                    className="secondary-button"
-                    disabled={working}
-                    onClick={() => setReplace(true)}
-                  >
-                    이 기기 기록을 온라인에 반영하려면
-                  </button>
-                ) : (
-                  <>
-                    {remote && (
-                      <p className="sync-caution">
-                        온라인 기록 전체가 현재 이 기기 기록으로 교체됩니다. 두
-                        기록을 자동으로 합치지 않습니다. 교체 전 양쪽 기록을 이
-                        기기에 백업합니다.
-                      </p>
-                    )}
-                    <button
-                      className="primary-button"
-                      disabled={working}
-                      onClick={() =>
-                        void action(async () => {
-                          await cloud.useLocal();
-                          setReplace(false);
-                        })
-                      }
-                    >
-                      {remote
-                        ? "백업 후 이 기기 기록으로 교체"
-                        : "이 기기 기록으로 온라인 저장 시작"}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
             {message && <p className="sync-caution">{message}</p>}
             <div className="sync-actions">
               <button
@@ -512,9 +376,9 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
               </button>
             </div>
             <p className="micro-note">
-              변경은 자동 저장합니다. 다른 기기의 기록은 화면 복귀 시 또는 약
-              30초마다 확인합니다. 연결이 끊기면 기기에 보관하고 재연결 시
-              확인합니다.
+              각 기기에서 한 변경을 자동으로 합쳐 저장합니다. 다른 기기의 변경은
+              화면 복귀 시 또는 약 3초마다 확인합니다. 연결이 끊겨도 기기에
+              보관하고 재연결 시 자동 반영합니다.
             </p>
             <p className="micro-note">
               로그아웃해도 이 계정의 기기 보관 기록은 삭제하지 않습니다. 공용

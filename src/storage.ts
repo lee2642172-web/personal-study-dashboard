@@ -11,6 +11,7 @@ import { includeCustomsTradeEnglish } from "./catalogs/customsTradeEnglish.ts";
 import { removeCancelledDayReviews } from "./dayLearning.ts";
 import { connectEbsGroup } from "./ebs.ts";
 import { type DashboardData, fields, materialStatuses } from "./model.ts";
+import { validSyncState } from "./syncMerge.ts";
 export const STORAGE_KEY = "personal-study-dashboard:v1";
 export interface DashboardRepository {
   load(): DashboardData | null;
@@ -31,6 +32,11 @@ export function validData(v: unknown): v is DashboardData {
     !object(v) ||
     v.version !== 1 ||
     !["materials", "logs", "goals", "tasks"].every((k) => Array.isArray(v[k]))
+  )
+    return false;
+  if (
+    v.syncState !== undefined &&
+    (!validSyncState(v.syncState) || !validData(v.syncState.seed))
   )
     return false;
   const unique = (arr: unknown[]) =>

@@ -1,11 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DashboardStore, accountStorageKey } from "../src/sync.ts";
-import { addTodo } from "../src/todos.ts";
 import { createInitialData } from "../src/initialData.ts";
 import { STORAGE_KEY } from "../src/storage.ts";
+import { addTodo, completeTodo, undoTodo, deleteTodo } from "../src/todos.ts";
+import { recordDayReview, cancelDayReview } from "../src/dayLearning.ts";
+import { equalData, plainData } from "../src/syncMerge.ts";
 import { configError, loadCloudConfig } from "../src/cloud.ts";
 const clone = structuredClone;
+const add = (id) => (d) => addTodo(d, { id, title: id });
 function memory(initial = createInitialData()) {
   const map = new Map([[STORAGE_KEY, JSON.stringify(initial)]]);
   return {
@@ -14,143 +17,160 @@ function memory(initial = createInitialData()) {
     setItem: (k, v) => map.set(k, v),
   };
 }
-const localData = (store) => store.getSnapshot().data;
-const add = (id) => (d) => addTodo(d, { id, title: id });
 function server(initial = null) {
   let current = initial
-    ? { data: clone(initial), revision: 1, updatedAt: "2026-10-31T01:00:00Z" }
+    ? { data: clone(initial), revision: 1, updatedAt: "2026-10-31T00:00:00Z" }
     : null;
   const writes = [];
+  let reads = 0,
+    heads = 0;
   return {
     writes,
     get current() {
       return clone(current);
     },
-    read: async () => clone(current),
-    async write(data, revision) {
-      if ((current?.revision ?? 0) !== revision)
+    get reads() {
+      return reads;
+    },
+    get heads() {
+      return heads;
+    },
+    read: async () => {
+      reads++;
+      return clone(current);
+    },
+    revision: async () => {
+      heads++;
+      return current?.revision ?? 0;
+    },
+    async write(data, version) {
+      if ((current?.revision ?? 0) !== version)
         throw new Error("DASHBOARD_CONFLICT");
       writes.push(clone(data));
       current = {
         data: clone(data),
-        revision: revision + 1,
-        updatedAt: "2026-10-31T02:00:00Z",
+        revision: version + 1,
+        updatedAt: "2026-10-31T01:00:00Z",
       };
       return clone(current);
     },
   };
 }
+const data = (s) => s.getSnapshot().data;
+const ids = (s) => new Set((data(s).todos ?? []).map((t) => t.id));
 
-test("first connection never silently uploads or replaces existing local/cloud records; explicit cloud choice backs up the local copy", async () => {
-  const initial = add("local-book")(createInitialData()),
-    db = server(add("cloud-book")(createInitialData())),
-    storage = memory(initial),
+test("first login automatically merges existing local and online records without a snapshot-choice step", async () => {
+  const local = add("phone")(createInitialData()),
+    storage = memory(local),
+    db = server(add("pc")(createInitialData())),
     store = new DashboardStore(storage);
   await store.connect("project:me", db);
-  assert.equal(store.getSnapshot().phase, "choice");
-  assert.equal(db.writes.length, 0);
-  assert.deepEqual(localData(store), initial);
-  store.useCloud();
   assert.equal(store.getSnapshot().phase, "saved");
-  assert.deepEqual(localData(store), db.current.data);
-  assert.deepEqual(store.getSnapshot().backups[0].data, initial);
-  assert.deepEqual(JSON.parse(storage.getItem(STORAGE_KEY)), initial);
-});
-test("new online account explicitly uploads the full existing document and a second device reads it without inventing data", async () => {
-  const initial = add("buy-book")(createInitialData()),
-    a = new DashboardStore(memory(initial)),
-    b = new DashboardStore(memory()),
-    db = server();
-  await a.connect("project:me", db);
-  assert.equal(db.current, null);
-  await a.useLocal();
-  assert.equal(db.writes.length, 1);
-  assert.deepEqual(db.current.data, initial);
-  await b.connect("project:me", db);
-  assert.equal(b.getSnapshot().phase, "choice");
-  b.useCloud();
-  assert.deepEqual(localData(b), initial);
-  a.update(add("exam-registration"));
-  await a.sync();
-  await b.sync();
-  assert.deepEqual(localData(b), localData(a));
-  assert.equal(db.current.revision, 2);
-});
-test("two divergent devices stop on a conflict, retain both drafts, and preserve original local data and explicit choice backup", async () => {
-  const db = server(),
-    a = new DashboardStore(memory()),
-    storageB = memory(),
-    b = new DashboardStore(storageB);
-  await a.connect("project:me", db);
-  await a.useLocal();
-  await b.connect("project:me", db);
-  a.update(add("PC"));
-  b.update(add("iPad"));
-  await a.sync();
-  await b.sync();
-  assert.equal(b.getSnapshot().phase, "conflict");
-  assert.ok(localData(b).todos.some((t) => t.id === "iPad"));
-  assert.ok(db.current.data.todos.some((t) => t.id === "PC"));
-  assert.equal(db.writes.length, 2);
-  const reload = new DashboardStore(storageB);
-  await reload.connect("project:me", db);
-  assert.equal(reload.getSnapshot().phase, "conflict");
-  const draft = clone(localData(reload));
-  reload.useCloud();
-  assert.deepEqual(localData(reload), db.current.data);
-  assert.deepEqual(reload.getSnapshot().backups[0].data, draft);
-});
-test("explicitly choosing this device backs up the online version and replaces via checked revision", async () => {
-  const storage = memory(add("local")(createInitialData())),
-    db = server(add("online")(createInitialData())),
-    store = new DashboardStore(storage),
-    before = db.current.data;
-  await store.connect("project:me", db);
-  await store.useLocal();
-  assert.ok(db.current.data.todos.some((t) => t.id === "local"));
-  assert.ok(!db.current.data.todos.some((t) => t.id === "online"));
-  assert.equal(db.current.revision, 2);
+  assert.deepEqual(ids(store), new Set(["phone", "pc"]));
+  assert.deepEqual(JSON.parse(storage.getItem(STORAGE_KEY)), local);
   assert.ok(
     store
-      .getSnapshot()
-      .backups.some((b) => JSON.stringify(b.data) === JSON.stringify(before)),
+      .getRecoverySources()
+      .some(
+        (s) =>
+          s.label === "자동 병합 전 이 기기 기록" &&
+          s.data.todos.some((t) => t.id === "phone"),
+      ),
   );
 });
-test("offline edits survive reload, sync after reconnect, and do not upload the untouched guest document", async () => {
+test("PC, iPad and Android concurrent changes converge automatically after revision races", async () => {
+  const db = server(),
+    devices = [
+      new DashboardStore(memory()),
+      new DashboardStore(memory()),
+      new DashboardStore(memory()),
+    ];
+  for (const s of devices) await s.connect("p:u", db);
+  devices.forEach((s, i) => s.update(add(`device-${i}`)));
+  await Promise.all(devices.map((s) => s.sync()));
+  for (const s of devices) await s.sync();
+  for (const s of devices) {
+    assert.equal(s.getSnapshot().phase, "saved");
+    assert.deepEqual(ids(s), new Set(["device-0", "device-1", "device-2"]));
+    assert.ok(equalData(data(s), db.current.data));
+  }
+  const count = db.writes.length;
+  await Promise.all(devices.map((s) => s.sync()));
+  assert.equal(db.writes.length, count);
+});
+test("offline drafts survive reload and reconnect while another device adds independent records", async () => {
   const db = server(),
     storage = memory(),
-    store = new DashboardStore(storage);
-  await store.connect("project:me", db);
-  await store.useLocal();
-  const offline = {
+    a = new DashboardStore(storage),
+    b = new DashboardStore(memory());
+  await a.connect("p:u", db);
+  await b.connect("p:u", db);
+  await a.connect("p:u", {
     read: async () => {
       throw new Error("offline");
     },
     write: db.write,
-  };
-  await store.connect("project:me", offline);
-  store.update(add("offline-work"));
-  await store.sync();
-  assert.equal(store.getSnapshot().phase, "offline");
-  const restored = new DashboardStore(storage);
-  await restored.connect("project:me", db);
-  assert.ok(db.current.data.todos.some((t) => t.id === "offline-work"));
-  assert.equal(restored.getSnapshot().phase, "saved");
-  assert.equal(JSON.parse(storage.getItem(STORAGE_KEY)).todos?.length ?? 0, 0);
+  });
+  a.update(add("offline-phone"));
+  await a.sync();
+  assert.equal(a.getSnapshot().phase, "offline");
+  b.update(add("online-pc"));
+  await b.sync();
+  const reopened = new DashboardStore(storage);
+  await reopened.connect("p:u", db);
+  await b.sync();
+  assert.deepEqual(ids(reopened), new Set(["offline-phone", "online-pc"]));
+  assert.ok(equalData(data(reopened), data(b)));
 });
-test("edits made while an upload is in flight remain pending and are sent in the next version", async () => {
+test("deletion and completion cancellation propagate without stale replicas resurrecting history or duplicating time", async () => {
+  const db = server(),
+    a = new DashboardStore(memory()),
+    b = new DashboardStore(memory());
+  await a.connect("p:u", db);
+  await b.connect("p:u", db);
+  a.update(add("book"));
+  await a.sync();
+  await b.sync();
+  a.update((d) => completeTodo(d, "book", "2026-10-31", 15));
+  await a.sync();
+  await b.sync();
+  a.update((d) => undoTodo(d, "book"));
+  b.update(add("unrelated"));
+  await Promise.all([a.sync(), b.sync()]);
+  await a.sync();
+  await b.sync();
+  assert.equal(data(b).todos.find((t) => t.id === "book").completion, null);
+  a.update((d) => deleteTodo(d, "book"));
+  b.update((d) => ({
+    ...d,
+    todos: d.todos.map((t) =>
+      t.id === "book" ? { ...t, note: "stale edit" } : t,
+    ),
+  }));
+  await Promise.all([a.sync(), b.sync()]);
+  await a.sync();
+  await b.sync();
+  assert.ok(!ids(a).has("book"));
+  assert.ok(!ids(b).has("book"));
+  assert.ok(ids(a).has("unrelated"));
+});
+test("edits made during an in-flight upload remain pending and are automatically sent without loss", async () => {
   const db = server(),
     store = new DashboardStore(memory());
-  await store.connect("project:me", db);
-  await store.useLocal();
+  await store.connect("p:u", db);
   let release, entered;
   const gate = new Promise((r) => (release = r)),
     started = new Promise((r) => (entered = r));
-  await store.connect("project:me", {
+  let first = true;
+  await store.connect("p:u", {
     read: db.read,
+    revision: db.revision,
     async write(d, v) {
-      entered();
-      await gate;
+      if (first) {
+        first = false;
+        entered();
+        await gate;
+      }
       return db.write(d, v);
     },
   });
@@ -160,110 +180,141 @@ test("edits made while an upload is in flight remain pending and are sent in the
   store.update(add("second"));
   release();
   await saving;
-  assert.equal(store.getSnapshot().phase, "pending");
-  assert.ok(!db.current.data.todos.some((t) => t.id === "second"));
-  await store.sync();
-  assert.ok(db.current.data.todos.some((t) => t.id === "second"));
+  assert.deepEqual(ids(store), new Set(["first", "second"]));
   assert.equal(store.getSnapshot().phase, "saved");
+  assert.ok(equalData(data(store), db.current.data));
 });
-test("server revision conflict between read and write cannot silently overwrite a newer device snapshot", async () => {
+test("an update racing between read and write is retried and merged without requiring user intervention", async () => {
   const db = server(),
     store = new DashboardStore(memory());
-  await store.connect("project:me", db);
-  await store.useLocal();
-  const race = {
+  await store.connect("p:u", db);
+  let once = true;
+  await store.connect("p:u", {
     read: db.read,
+    revision: db.revision,
     async write(d, v) {
-      await db.write(add("other-device")(db.current.data), v);
+      if (once) {
+        once = false;
+        const competitor = new DashboardStore(memory());
+        await competitor.connect("p:u", db);
+        competitor.update(add("other-device"));
+        await competitor.sync();
+      }
       return db.write(d, v);
     },
-  };
-  await store.connect("project:me", race);
-  store.update(add("my-draft"));
+  });
+  store.update(add("my-device"));
   await store.sync();
-  assert.equal(store.getSnapshot().phase, "conflict");
-  assert.ok(
-    store.getSnapshot().remote.data.todos.some((t) => t.id === "other-device"),
-  );
-  assert.ok(localData(store).todos.some((t) => t.id === "my-draft"));
-  assert.ok(!db.current.data.todos.some((t) => t.id === "my-draft"));
+  assert.equal(store.getSnapshot().phase, "saved");
+  assert.deepEqual(ids(store), new Set(["my-device", "other-device"]));
 });
-test("logout and account/project switches keep account caches isolated and ignore delayed responses", async () => {
+test("quiet polling uses only the revision probe and does not repeatedly transfer or write full documents", async () => {
+  const db = server(),
+    store = new DashboardStore(memory());
+  await store.connect("p:u", db);
+  const reads = db.reads,
+    writes = db.writes.length;
+  await store.sync();
+  await store.sync();
+  assert.equal(db.reads, reads);
+  assert.equal(db.writes.length, writes);
+  assert.ok(db.heads >= 2);
+});
+test("new logged-out edits from the same owner automatically import once, including explicit deletions", async () => {
+  const db = server(),
+    storage = memory(),
+    store = new DashboardStore(storage);
+  await store.connect("p:u", db);
+  store.disconnect();
+  store.update(add("guest-task"));
+  await store.connect("p:u", db);
+  assert.ok(ids(store).has("guest-task"));
+  store.disconnect();
+  store.update((d) => deleteTodo(d, "guest-task"));
+  await store.connect("p:u", db);
+  assert.ok(!ids(store).has("guest-task"));
+  const count = db.writes.length;
+  await store.sync();
+  assert.equal(db.writes.length, count);
+});
+test("account/project switches isolate drafts and never auto-upload another account owned guest data", async () => {
+  const storage = memory(add("private-a")(createInitialData())),
+    a = new DashboardStore(storage),
+    dbA = server(),
+    dbB = server();
+  await a.connect("project:a", dbA);
+  a.update(add("a-edit"));
+  await a.sync();
+  a.disconnect();
+  await a.connect("project:b", dbB);
+  assert.ok(!ids(a).has("private-a"));
+  assert.ok(!ids(a).has("a-edit"));
+  a.disconnect();
+  await a.connect("project:a", dbA);
+  assert.ok(ids(a).has("private-a"));
+  assert.ok(ids(a).has("a-edit"));
+});
+test("late network responses after logout cannot replace the guest screen or a different account cache", async () => {
   const storage = memory(add("guest")(createInitialData())),
-    store = new DashboardStore(storage),
-    db = server(add("account-a")(createInitialData()));
-  await store.connect("one:a", db);
-  store.useCloud();
-  store.update(add("unsent"));
-  store.disconnect();
-  assert.ok(localData(store).todos.some((t) => t.id === "guest"));
-  assert.ok(!localData(store).todos.some((t) => t.id === "account-a"));
-  await store.connect("two:a", server());
-  assert.ok(!localData(store).todos.some((t) => t.id === "unsent"));
-  store.disconnect();
+    store = new DashboardStore(storage);
   let release;
   const delayed = new Promise((r) => (release = r));
-  const connecting = store.connect("one:b", {
+  const connecting = store.connect("p:u", {
     read: () => delayed,
-    write: db.write,
+    write: async () => {
+      throw new Error("Must not write after logout");
+    },
   });
   store.disconnect();
-  release(db.current);
+  release({
+    data: add("private")(createInitialData()),
+    revision: 1,
+    updatedAt: "2026-10-31",
+  });
   await connecting;
   assert.equal(store.getSnapshot().phase, "local");
-  assert.ok(localData(store).todos.some((t) => t.id === "guest"));
-  await store.connect("one:a", db);
-  assert.ok(localData(store).todos.some((t) => t.id === "unsent"));
-  storage.map.set(accountStorageKey("one:broken"), "broken-account");
-  await store.connect("one:broken", server());
-  assert.equal(store.getSnapshot().phase, "error");
-  assert.ok(!localData(store).todos.some((t) => t.id === "account-a"));
+  assert.ok(ids(store).has("guest"));
+  assert.ok(!ids(store).has("private"));
 });
-test("record deletions, time edits and cancellations travel as the full validated document without resurrecting removed records", async () => {
+test("same-browser storage changes and sequential tab edits preserve the union of pending changes", async () => {
   const db = server(),
-    a = new DashboardStore(memory()),
-    b = new DashboardStore(memory());
+    storage = memory(),
+    a = new DashboardStore(storage),
+    b = new DashboardStore(storage);
   await a.connect("p:u", db);
-  await a.useLocal();
   await b.connect("p:u", db);
-  const removed = localData(a).logs[0].id;
-  a.update((d) => ({
-    ...d,
-    logs: d.logs
-      .filter((l) => l.id !== removed)
-      .map((l, i) => (i === 0 ? { ...l, date: "2026-10-31", minutes: 7 } : l)),
-  }));
+  a.update(add("tab-a"));
+  b.update(add("tab-b"));
+  a.onStorageChanged(accountStorageKey("p:u"));
   await a.sync();
   await b.sync();
-  assert.deepEqual(localData(b), localData(a));
-  assert.ok(!localData(b).logs.some((l) => l.id === removed));
-  assert.equal(localData(b).logs[0].minutes, 7);
+  assert.deepEqual(ids(a), new Set(["tab-a", "tab-b"]));
+  assert.deepEqual(ids(b), ids(a));
 });
-test("corrupt guest/account caches and full local storage are preserved and never overwrite cloud data", async () => {
+test("corrupt caches, full storage and uncertain network saves never erase originals or report a false successful upload", async () => {
   const storage = memory();
-  storage.map.set(STORAGE_KEY, "broken");
+  storage.map.set(STORAGE_KEY, "broken-original");
   const store = new DashboardStore(storage);
   store.update(add("temporary"));
-  assert.equal(storage.getItem(STORAGE_KEY), "broken");
+  assert.equal(storage.getItem(STORAGE_KEY), "broken-original");
   assert.ok(store.getSnapshot().storageError);
   storage.map.set(accountStorageKey("p:u"), "broken-account");
   const db = server();
   await store.connect("p:u", db);
   assert.equal(store.getSnapshot().phase, "error");
   assert.equal(storage.getItem(accountStorageKey("p:u")), "broken-account");
-  await store.useLocal();
   assert.equal(db.current, null);
-  const full = memory(),
-    a = new DashboardStore(full);
-  await a.connect("p:u", db);
+  const full = memory(add("preserve")(createInitialData())),
+    s = new DashboardStore(full);
   full.setItem = () => {
     throw new Error("QuotaExceeded");
   };
-  await a.useLocal();
+  await s.connect("p:u", db);
   assert.equal(db.current, null);
-  assert.ok(a.getSnapshot().storageError);
+  assert.ok(s.getSnapshot().storageError);
+  assert.ok(ids(s).has("preserve"));
 });
-test("public client configuration rejects secret keys and foreign URLs", () => {
+test("public client configuration still rejects private keys and foreign endpoints", () => {
   const config = {
     url: "https://study-test.supabase.co",
     key: "sb_publishable_12345678901234567890",

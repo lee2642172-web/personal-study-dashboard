@@ -4,8 +4,11 @@ import { DashboardStore, accountStorageKey } from "../src/sync.ts";
 import { recoverySources, recoverySummary } from "../src/recovery.ts";
 import { createInitialData } from "../src/initialData.ts";
 import { STORAGE_KEY } from "../src/storage.ts";
-import { addTodo } from "../src/todos.ts";
+import { addTodo, deleteTodo } from "../src/todos.ts";
 import { recordDayReview } from "../src/dayLearning.ts";
+import { recordEbsLearning } from "../src/ebs.ts";
+import { studySummary, dashboardTimeEntries } from "../src/dashboard.ts";
+import { plainData } from "../src/syncMerge.ts";
 const clone = structuredClone;
 function memory(initial = createInitialData()) {
   const map = new Map([[STORAGE_KEY, JSON.stringify(initial)]]);
@@ -29,7 +32,7 @@ function server(data = createInitialData()) {
     },
     read: async () => clone(current),
     async write(data, version) {
-      assert.equal(version, current.revision);
+      if (version !== current.revision) throw new Error("DASHBOARD_CONFLICT");
       writes.push(clone(data));
       current = {
         data: clone(data),
@@ -44,7 +47,7 @@ function phoneData() {
   return recordDayReview(
     addTodo(createInitialData(), {
       id: "phone-latest",
-      title: "휴대폰에서 최근에 추가한 기록",
+      title: "휴대폰 최신 기록",
     }),
     "vocabulary",
     1,
@@ -54,144 +57,149 @@ function phoneData() {
     12,
   );
 }
+function pcData() {
+  return recordEbsLearning(
+    addTodo(createInitialData(), { id: "pc-only", title: "PC 별도 기록" }),
+    "ebs-0",
+    "2026-04-08",
+    "2026-10-31",
+    "pc-listen",
+  );
+}
+function legacyCache(storage, data, cloud, recoveryDraft = false) {
+  storage.setItem(
+    accountStorageKey("p:u"),
+    JSON.stringify({
+      data,
+      base: cloud,
+      revision: 1,
+      lastSyncedAt: "2026-10-30T00:00:00Z",
+      backups: [
+        {
+          data: phoneData(),
+          label: "온라인 기록을 불러오기 전 이 기기 기록",
+          at: "2026-10-31T00:00:00Z",
+        },
+      ],
+      ...(recoveryDraft ? { recoveryDraft: true } : {}),
+    }),
+  );
+}
 
-test("the reported incident is recoverable: choosing an older cloud snapshot preserves both guest original and a pre-replacement backup", async () => {
+test("the already-recovered phone draft upgrades into automatic sync and combines both phone and PC records without a publishing step", async () => {
   const phone = phoneData(),
+    pc = pcData(),
     storage = memory(phone),
-    db = server(),
-    store = new DashboardStore(storage);
-  await store.connect("project:me", db);
-  assert.equal(store.getSnapshot().phase, "choice");
-  assert.ok(store.useCloud());
-  assert.deepEqual(store.getSnapshot().data, db.current.data);
-  assert.deepEqual(JSON.parse(storage.getItem(STORAGE_KEY)), phone);
-  const sources = store.getRecoverySources(),
-    backup = sources.find(
-      (s) => s.label === "온라인 기록을 불러오기 전 이 기기 기록",
-    );
-  assert.ok(backup);
-  assert.deepEqual(JSON.parse(backup.raw), phone);
-  assert.deepEqual(sources.find((s) => s.id === "guest").data, phone);
-  store.stageRecovery(backup.id, backup.raw);
-  assert.deepEqual(store.getSnapshot().data, phone);
-  assert.equal(store.getSnapshot().recoveryDraft, true);
-  assert.equal(db.writes.length, 0);
-  assert.ok(
-    store
-      .getSnapshot()
-      .backups.some(
-        (b) => JSON.stringify(b.data) === JSON.stringify(db.current.data),
-      ),
-  );
-  await store.sync();
-  assert.deepEqual(store.getSnapshot().data, phone);
-  assert.equal(db.writes.length, 0);
-  const reopened = new DashboardStore(storage);
-  await reopened.connect("project:me", db);
-  assert.equal(reopened.getSnapshot().recoveryDraft, true);
-  assert.deepEqual(reopened.getSnapshot().data, phone);
-  assert.equal(db.writes.length, 0);
-});
-test("recovery drafts remain local after edits, focus-style polls, reconnect and server revision changes until explicit publication", async () => {
-  const storage = memory(phoneData()),
-    db = server(),
-    store = new DashboardStore(storage);
-  await store.connect("p:u", db);
-  store.useCloud();
-  const source = store.getRecoverySources().find((s) => s.id === "guest");
-  store.stageRecovery(source.id, source.raw);
-  store.update((d) =>
-    addTodo(d, { id: "draft-edit", title: "복구 내용 확인 중 추가" }),
-  );
-  await store.sync();
-  assert.equal(db.writes.length, 0);
-  await db.write(
-    addTodo(db.current.data, { id: "pc-new", title: "PC의 별도 변경" }),
-    1,
-  );
-  await store.sync();
-  assert.ok(store.getSnapshot().data.todos.some((t) => t.id === "draft-edit"));
-  assert.ok(!db.current.data.todos.some((t) => t.id === "draft-edit"));
-  await store.useLocal();
-  assert.equal(store.getSnapshot().recoveryDraft, false);
-  assert.equal(store.getSnapshot().phase, "saved");
-  assert.ok(db.current.data.todos.some((t) => t.id === "draft-edit"));
-  assert.ok(
-    store
-      .getSnapshot()
-      .backups.some((b) => b.data.todos?.some((t) => t.id === "pc-new")),
-  );
-});
-test("an older account cache cannot silently hide newer logged-out phone records on a later login", async () => {
-  const storage = memory(),
-    db = server(),
-    first = new DashboardStore(storage);
-  await first.connect("p:u", db);
-  first.disconnect();
-  storage.setItem(STORAGE_KEY, JSON.stringify(phoneData()));
+    db = server(pc);
+  legacyCache(storage, phone, pc, true);
   const store = new DashboardStore(storage);
   await store.connect("p:u", db);
-  assert.equal(store.getSnapshot().guestReviewNeeded, true);
-  assert.equal(store.getSnapshot().phase, "choice");
-  assert.equal(db.writes.length, 0);
+  assert.equal(store.getSnapshot().phase, "saved");
   assert.deepEqual(
-    store.getRecoverySources().find((s) => s.id === "guest").data,
-    phoneData(),
+    new Set(store.getSnapshot().data.todos.map((t) => t.id)),
+    new Set(["phone-latest", "pc-only"]),
   );
-  assert.ok(store.useCloud());
-  const resumed = new DashboardStore(storage);
-  await resumed.connect("p:u", db);
-  assert.equal(resumed.getSnapshot().guestReviewNeeded, false);
-  assert.equal(resumed.getSnapshot().phase, "saved");
-  assert.deepEqual(
-    resumed.getRecoverySources().find((s) => s.id === "guest").data,
-    phoneData(),
+  assert.equal(
+    studySummary(dashboardTimeEntries(store.getSnapshot().data), "2026-10-31")
+      .today,
+    30,
   );
+  assert.equal(db.writes.length, 1);
+  assert.deepEqual(JSON.parse(storage.getItem(STORAGE_KEY)), phone);
+  const sources = store.getRecoverySources();
+  assert.ok(
+    sources.some(
+      (s) =>
+        s.label === "자동 병합 전 이 기기 기록" &&
+        s.data.logs.some((l) => l.id === "phone-review"),
+    ),
+  );
+  assert.ok(
+    sources.some(
+      (s) =>
+        s.label === "자동 병합 전 온라인 기록" &&
+        s.data.logs.some((l) => l.id === "pc-listen"),
+    ),
+  );
+  const reopened = new DashboardStore(storage);
+  await reopened.connect("p:u", db);
+  assert.equal(reopened.getSnapshot().phase, "saved");
+  assert.equal(
+    studySummary(
+      dashboardTimeEntries(reopened.getSnapshot().data),
+      "2026-10-31",
+    ).today,
+    30,
+  );
+  assert.equal(db.writes.length, 1);
 });
-test("failed recovery persistence rolls back visible state and retains the original phone and current account copies", async () => {
-  const storage = memory(phoneData()),
+test("an older account cache and old reviewed flag cannot hide unsynced guest records; automatic import happens once", async () => {
+  const phone = phoneData(),
+    pc = pcData(),
+    storage = memory(phone),
+    db = server(pc);
+  legacyCache(storage, pc, pc);
+  storage.setItem(
+    `${accountStorageKey("p:u")}:guest-reviewed`,
+    JSON.stringify(phone),
+  );
+  const store = new DashboardStore(storage);
+  await store.connect("p:u", db);
+  assert.ok(store.getSnapshot().data.logs.some((l) => l.id === "phone-review"));
+  assert.ok(store.getSnapshot().data.logs.some((l) => l.id === "pc-listen"));
+  const count = db.writes.length;
+  await store.sync();
+  assert.equal(db.writes.length, count);
+});
+test("adding a historical source automatically syncs missing records while modern delete tombstones keep cancelled records deleted", async () => {
+  const storage = memory(),
     db = server(),
     store = new DashboardStore(storage);
   await store.connect("p:u", db);
-  store.useCloud();
-  const source = store.getRecoverySources().find((s) => s.id === "guest"),
-    before = clone(store.getSnapshot().data),
+  store.update((d) => addTodo(d, { id: "deleted", title: "delete" }));
+  await store.sync();
+  store.update((d) => deleteTodo(d, "deleted"));
+  await store.sync();
+  const legacy = addTodo(phoneData(), { id: "deleted", title: "old copy" });
+  storage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+  const source = store.getRecoverySources().find((s) => s.id === "guest");
+  store.stageRecovery(source.id, source.raw);
+  assert.equal(store.getSnapshot().phase, "pending");
+  await store.sync();
+  assert.equal(store.getSnapshot().phase, "saved");
+  assert.ok(store.getSnapshot().data.logs.some((l) => l.id === "phone-review"));
+  assert.ok(!store.getSnapshot().data.todos.some((t) => t.id === "deleted"));
+});
+test("failed migration backup or merge persistence never uploads a partial replacement or overwrites the restored phone original", async () => {
+  const phone = phoneData(),
+    pc = pcData(),
+    storage = memory(phone),
+    db = server(pc);
+  legacyCache(storage, phone, pc, true);
+  const store = new DashboardStore(storage),
     put = storage.setItem;
-  let attempts = 0;
   storage.setItem = (key, value) => {
-    if (key === accountStorageKey("p:u") && ++attempts === 2)
+    if (key.endsWith(":before-automatic-sync"))
       throw new Error("QuotaExceeded");
     put(key, value);
   };
-  assert.throws(
-    () => store.stageRecovery(source.id, source.raw),
-    /기기에 저장하지 못/,
-  );
-  assert.deepEqual(store.getSnapshot().data, before);
-  assert.equal(store.getSnapshot().recoveryDraft, false);
+  await store.connect("p:u", db);
   assert.ok(store.getSnapshot().storageError);
-  assert.deepEqual(JSON.parse(storage.getItem(STORAGE_KEY)), phoneData());
-  assert.deepEqual(
-    JSON.parse(storage.getItem(accountStorageKey("p:u"))).data,
-    before,
-  );
   assert.equal(db.writes.length, 0);
+  assert.deepEqual(plainData(store.getSnapshot().data), phone);
+  assert.deepEqual(JSON.parse(storage.getItem(STORAGE_KEY)), phone);
 });
-test("stale source references and unrelated account caches cannot be restored or exposed by the recovery picker", async () => {
+test("stale references and foreign account originals are not merged through the recovery picker", async () => {
   const storage = memory(phoneData()),
     db = server(),
     store = new DashboardStore(storage);
   await store.connect("p:u", db);
-  store.useCloud();
   const source = store.getRecoverySources().find((s) => s.id === "guest"),
     before = clone(store.getSnapshot().data);
   storage.setItem(
     STORAGE_KEY,
     JSON.stringify(
-      addTodo(phoneData(), {
-        id: "later-guest",
-        title: "브라우저의 다른 탭에서 추가한 기록",
-      }),
+      addTodo(phoneData(), { id: "changed", title: "another tab" }),
     ),
   );
   assert.throws(
@@ -199,39 +207,23 @@ test("stale source references and unrelated account caches cannot be restored or
     /내용이 바뀌었/,
   );
   assert.deepEqual(store.getSnapshot().data, before);
-  storage.setItem(
-    accountStorageKey("other:user"),
-    JSON.stringify({ data: { private: "do not expose" } }),
-  );
-  assert.ok(
-    store.getRecoverySources().every((s) => !s.raw.includes("do not expose")),
-  );
-  assert.throws(
-    () => store.stageRecovery("other:user", "anything"),
-    /읽지 못했/,
-  );
-  assert.equal(db.writes.length, 0);
+  store.disconnect();
+  await store.connect("other:user", server());
+  assert.ok(!store.getRecoverySources().some((s) => s.id === "guest"));
+  assert.throws(() => store.stageRecovery("p:u", "anything"), /읽지 못했/);
 });
-test("malformed guest JSON is downloadable verbatim for recovery but cannot replace validated account data", async () => {
+test("malformed original JSON remains downloadable verbatim and does not overwrite a valid account document", () => {
   const storage = memory();
   storage.setItem(STORAGE_KEY, "original broken JSON {");
-  const sources = recoverySources(storage, []);
-  assert.equal(sources[0].raw, "original broken JSON {");
-  assert.equal(sources[0].data, null);
-  assert.ok(sources[0].error);
-  const store = new DashboardStore(storage),
-    db = server();
-  await store.connect("p:u", db);
-  assert.throws(
-    () => store.stageRecovery("guest", "original broken JSON {"),
-    /읽지 못했/,
-  );
+  const source = recoverySources(storage, [])[0];
+  assert.equal(source.raw, "original broken JSON {");
+  assert.equal(source.data, null);
+  assert.ok(source.error);
   assert.equal(storage.getItem(STORAGE_KEY), "original broken JSON {");
-  assert.equal(db.writes.length, 0);
 });
-test("preview dates use recorded activity, not planned goals/events or cancelled activity; raw source inspection does not change storage", () => {
-  let data = phoneData();
-  const base = data.logs[0];
+test("preview dates reflect actual records, excluding cancelled activity and future goal dates", () => {
+  const data = phoneData(),
+    base = data.logs[0];
   data.logs.push({
     ...base,
     id: "cancelled-later",
@@ -240,12 +232,9 @@ test("preview dates use recorded activity, not planned goals/events or cancelled
   });
   data.goals[0].targetDate = "2030-01-01";
   const storage = memory(data),
-    before = storage.getItem(STORAGE_KEY);
-  const source = recoverySources(storage, [])[0],
-    summary = recoverySummary(source.data);
+    raw = storage.getItem(STORAGE_KEY),
+    summary = recoverySummary(recoverySources(storage, [])[0].data);
   assert.equal(summary.latestActivityDate, "2026-10-31");
   assert.equal(summary.recentLogs[0].id, "phone-review");
-  assert.equal(summary.todos, 1);
-  assert.equal(summary.logs, data.logs.length - 1);
-  assert.equal(storage.getItem(STORAGE_KEY), before);
+  assert.equal(storage.getItem(STORAGE_KEY), raw);
 });

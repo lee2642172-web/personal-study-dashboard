@@ -4,7 +4,7 @@ import { recoverySummary, type RecoverySource } from "./recovery";
 import { exportJsonText } from "./storage";
 
 export function RecoveryPanel({ working }: { working: boolean }) {
-  const { data, backups, cloud, recoveryDraft, guestReviewNeeded } = useData();
+  const { data, backups, cloud } = useData();
   const sources = useMemo(
     () => cloud.getRecoverySources(),
     [cloud.getRecoverySources, data, backups],
@@ -18,7 +18,7 @@ export function RecoveryPanel({ working }: { working: boolean }) {
     try {
       cloud.stageRecovery(source.id, source.raw);
       setNotice(
-        "복구 초안을 열었습니다. 설정 창을 닫고 HOME·상세 화면에서 누락됐던 내용을 확인해 주세요. 온라인 기록에는 아직 반영하지 않았습니다.",
+        "이 사본의 기록을 현재 기록에 합쳤습니다. 같은 계정의 다른 기기에도 자동 반영합니다.",
       );
     } catch (error) {
       setError(
@@ -27,14 +27,12 @@ export function RecoveryPanel({ working }: { working: boolean }) {
     }
   }
   return (
-    <details
-      className="sync-recovery"
-      open={recoveryDraft || guestReviewNeeded ? true : undefined}
-    >
-      <summary>기록 복구 · 로그인 전 원본 및 교체 전 백업</summary>
+    <details className="sync-recovery">
+      <summary>기록 백업·복구</summary>
       <p className="micro-note">
-        사본을 먼저 JSON 파일로 내려받아 보관해 주세요. 복구 초안은 이 기기에만
-        열며, 온라인 기록을 자동으로 바꾸거나 두 사본을 합치지 않습니다.
+        기존 원본과 자동 병합 전 사본을 내려받을 수 있습니다. 사본의 누락된
+        기록을 현재 기록에 합치면 다른 기기에도 자동 반영합니다. 이미
+        취소·삭제한 기록은 자동으로 되살리지 않습니다.
       </p>
       <p className="sync-data-summary">
         현재 화면: 학습 이력 {current.logs}건 · 최근 실제 활동일{" "}
@@ -106,7 +104,7 @@ export function RecoveryPanel({ working }: { working: boolean }) {
                   disabled={working || !cloud.user || !source.data}
                   onClick={() => restore(source)}
                 >
-                  이 사본을 복구 초안으로 열기
+                  이 사본의 기록을 현재 기록에 합치기
                 </button>
               </div>
             </section>

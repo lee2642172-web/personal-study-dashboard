@@ -35,8 +35,6 @@ type State = SyncView & {
     setPassword: (password: string, confirmation: string) => Promise<void>;
     logout: () => Promise<void>;
     refresh: () => Promise<void>;
-    useLocal: () => Promise<void>;
-    useCloud: () => boolean;
     getRecoverySources: () => RecoverySource[];
     stageRecovery: (id: string, expectedRaw: string) => void;
   };
@@ -138,14 +136,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const refresh = () => {
       if (document.visibilityState !== "hidden") void store.sync();
     };
-    const timer = setInterval(refresh, 30000);
+    const timer = setInterval(refresh, 3000);
+    const storageChanged = (event: StorageEvent) =>
+      store.onStorageChanged(event.key);
     window.addEventListener("focus", refresh);
     window.addEventListener("online", refresh);
+    window.addEventListener("storage", storageChanged);
     document.addEventListener("visibilitychange", refresh);
     return () => {
       clearInterval(timer);
       window.removeEventListener("focus", refresh);
       window.removeEventListener("online", refresh);
+      window.removeEventListener("storage", storageChanged);
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [user, store]);
@@ -204,8 +206,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       store.disconnect();
     },
     refresh: () => store.sync(),
-    useLocal: store.useLocal,
-    useCloud: store.useCloud,
     getRecoverySources: store.getRecoverySources,
     stageRecovery: store.stageRecovery,
   };

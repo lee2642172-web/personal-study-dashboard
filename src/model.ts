@@ -168,6 +168,20 @@ export type DashboardData = {
   goals: Goal[];
   tasks: Task[];
   todos?: TodoItem[];
+  syncState?: SyncState;
+};
+export type SyncChange = {
+  n: number;
+  actor: string;
+  deleted?: true;
+  array?: true;
+  object?: true;
+  value?: unknown;
+};
+export type SyncState = {
+  protocol: 1;
+  seed: Omit<DashboardData, "syncState">;
+  changes: Record<string, SyncChange>;
 };
 export type VocabularySheet = {
   id: string;

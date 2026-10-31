@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { restoreData } from "./storage.ts";
 import type { CloudRepository, CloudSnapshot } from "./sync.ts";
+import { captureUntrackedDocument } from "./syncMerge.ts";
 
 export type CloudConfig = { url: string; key: string };
 export const CLOUD_CONFIG_KEY = "personal-study-dashboard:cloud-config";
@@ -64,33 +65,71 @@ function snapshot(row: {
   if (
     !Number.isSafeInteger(row.revision) ||
     row.revision < 1 ||
-    typeof row.updated_at !== "string"
+    typeof row.updated_at !== "string" ||
+    !Number.isFinite(Date.parse(row.updated_at))
   )
     throw new Error("Invalid cloud snapshot");
   return {
-    data: restoreData(row.payload),
+    data: restoreData(
+      captureUntrackedDocument(
+        restoreData(row.payload),
+        "legacy:server-write",
+        Date.parse(row.updated_at),
+      ),
+    ),
     revision: row.revision,
     updatedAt: row.updated_at,
   };
 }
+async function requestWithin<T>(
+  request: (signal: AbortSignal) => PromiseLike<T>,
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    return await request(controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 export function cloudRepository(client: SupabaseClient): CloudRepository {
   return {
+    async revision() {
+      const { data, error } = await requestWithin((signal) =>
+        client
+          .from("dashboard_snapshots")
+          .select("revision")
+          .abortSignal(signal)
+          .maybeSingle()
+          .retry(false),
+      );
+      if (error) throw new Error("온라인 변경을 확인하지 못했습니다.");
+      if (data && (!Number.isSafeInteger(data.revision) || data.revision < 1))
+        throw new Error("Invalid cloud revision");
+      return data?.revision ?? 0;
+    },
     async read() {
-      const { data, error } = await client
-        .from("dashboard_snapshots")
-        .select("payload, revision, updated_at")
-        .maybeSingle()
-        .retry(false);
+      const { data, error } = await requestWithin((signal) =>
+        client
+          .from("dashboard_snapshots")
+          .select("payload, revision, updated_at")
+          .abortSignal(signal)
+          .maybeSingle()
+          .retry(false),
+      );
       if (error) throw new Error("온라인 기록을 읽지 못했습니다.");
       return data ? snapshot(data) : null;
     },
     async write(data, expectedRevision) {
-      const { data: saved, error } = await client
-        .rpc("save_dashboard", {
-          expected_revision: expectedRevision,
-          document: data,
-        })
-        .retry(false);
+      const { data: saved, error } = await requestWithin((signal) =>
+        client
+          .rpc("save_dashboard", {
+            expected_revision: expectedRevision,
+            document: data,
+          })
+          .abortSignal(signal)
+          .retry(false),
+      );
       if (error)
         throw new Error(
           error.message.includes("DASHBOARD_CONFLICT")
