@@ -1,6 +1,7 @@
 import { VocabularySummary } from "./Vocabulary";
 import { LanguageTasks, TaskBoard, WorkRecordForm } from "./Tasks";
 import { TodoEditor } from "./Todos";
+import { todoGroupItems } from "./todos";
 import { activityEntries } from "./activities";
 import { timedStudyLogs } from "./dashboard";
 import { workLabel } from "./taskWork";
@@ -1063,6 +1064,13 @@ export function Records() {
                 <article className="activity-work-record" key={entry.id}>
                   <div>
                     <h3>{entry.title}</h3>
+                    {entry.source === "todo" && entry.todo.isGroup && (
+                      <small>
+                        {todoGroupItems(data.todos, entry.todo.id)
+                          .map((t) => t.title)
+                          .join(" · ")}
+                      </small>
+                    )}
                     <p>
                       {entry.source === "task"
                         ? `${fieldName(entry.task.area)} · ${workLabel(entry.task, entry.record)} · ${entry.record.mode === "session" ? "시간 기록" : entry.record.completed === false ? "작업 중" : "범위 완료"}`

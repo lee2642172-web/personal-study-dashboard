@@ -6,7 +6,7 @@ import type {
   Task,
   TaskWorkRecord,
 } from "./model.ts";
-import { completedTodos } from "./todos.ts";
+import { completedTodos, todoTitle } from "./todos.ts";
 
 type ActivityBase = {
   id: string;
@@ -46,7 +46,7 @@ export function activityEntries(data: DashboardData): ActivityEntry[] {
       activity: "todo",
       date: todo.completion!.date,
       minutes: todo.completion!.minutes,
-      title: todo.title,
+      title: todoTitle(todo, data.todos),
       todo,
     })),
     ...data.tasks.flatMap((task) =>

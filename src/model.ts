@@ -112,6 +112,10 @@ export type TodoItem = {
   dueDate: string;
   note: string;
   plannedMinutes?: number;
+  /** A work block owns its total time; child todos only refer to that block. */
+  isGroup?: true;
+  recordDate?: string;
+  groupId?: string;
   completion: { date: string; minutes: number } | null;
 };
 export type TaskStep = {

@@ -6,7 +6,18 @@ import { localDate } from "./dates";
 import { useLocalDate } from "./useLocalDate";
 import { useData } from "./state";
 import { Dialog } from "./ui";
-import { addTodo, editTodo, completeTodo, undoTodo, deleteTodo } from "./todos";
+import {
+  addTodo,
+  editTodo,
+  completeTodo,
+  undoTodo,
+  deleteTodo,
+  todoGroup,
+  todoGroupItems,
+  todoTitle,
+  unstageTodo,
+} from "./todos";
+import { DEFAULT_RECORD_MINUTES, formatTimeT } from "./timeUnits";
 
 export function TodoEditor({
   value,
@@ -41,7 +52,10 @@ export function TodoEditor({
     onClose();
   }
   return (
-    <Dialog title="일반 할 일 수정" onClose={onClose}>
+    <Dialog
+      title={item.isGroup ? "할 일 묶음 기록 수정" : "일반 할 일 수정"}
+      onClose={onClose}
+    >
       <form className="v1-form" onSubmit={submit}>
         <label>
           제목
@@ -67,6 +81,18 @@ export function TodoEditor({
             onChange={(e) => setItem({ ...item, note: e.target.value })}
           />
         </label>
+        {item.isGroup && !item.completion && (
+          <label>
+            작업 날짜
+            <input
+              type="date"
+              required
+              max={today}
+              value={item.recordDate ?? ""}
+              onChange={(e) => setItem({ ...item, recordDate: e.target.value })}
+            />
+          </label>
+        )}
         {item.completion && (
           <div className="form-grid">
             <label>
@@ -123,18 +149,22 @@ function TodoRow({
 }) {
   const { data, update } = useData();
   const [minutes, setMinutes] = useState(
-      item.plannedMinutes === undefined ? "" : String(item.plannedMinutes),
+      item.plannedMinutes === undefined
+        ? item.isGroup
+          ? String(DEFAULT_RECORD_MINUTES)
+          : ""
+        : String(item.plannedMinutes),
     ),
     [error, setError] = useState("");
   function complete(e: FormEvent) {
     e.preventDefault();
     const amount = minutes.trim() === "" ? 0 : Number(minutes),
-      date = localDate();
-    if (completeTodo(data, item.id, date, amount, date) === data) {
+      date = item.isGroup ? item.recordDate! : localDate();
+    if (completeTodo(data, item.id, date, amount, localDate()) === data) {
       setError("소요시간을 0 이상의 정수 분 단위로 입력해 주세요.");
       return;
     }
-    update((d) => completeTodo(d, item.id, date, amount, date));
+    update((d) => completeTodo(d, item.id, date, amount, localDate()));
     setMinutes("");
     setError("");
     onNotice(`‘${item.title}’ 완료 · ${amount}분을 기록했습니다.`);
@@ -148,12 +178,13 @@ function TodoRow({
         <div>
           <h3>
             {item.completion && <Check size={15} aria-hidden="true" />}
-            {item.title}
+            {todoTitle(item, data.todos)}
           </h3>
           <div className="todo-meta">
             {item.completion && (
               <span className="todo-completed">
-                완료 {item.completion.date} · {item.completion.minutes}분
+                완료 {item.completion.date} ·{" "}
+                {formatTimeT(item.completion.minutes)}
               </span>
             )}
             {item.dueDate && (
@@ -167,6 +198,28 @@ function TodoRow({
             )}
           </div>
           {item.note && <p className="todo-note">{item.note}</p>}
+          {item.isGroup && !item.completion && (
+            <p className="todo-note">작업 {item.recordDate} · 시간 기록 대기</p>
+          )}
+          {item.isGroup && (
+            <ul className="todo-group-members" aria-label="묶음의 할 일 목록">
+              {todoGroupItems(data.todos, item.id).map((member) => (
+                <li key={member.id}>
+                  {member.title}
+                  {!item.completion && (
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => update((d) => unstageTodo(d, member.id))}
+                      aria-label={`${member.title} 처리 취소`}
+                    >
+                      처리 취소
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <div className="todo-row-actions">
           {item.completion && (
@@ -174,7 +227,11 @@ function TodoRow({
               className="text-button"
               onClick={() => {
                 update((d) => undoTodo(d, item.id));
-                onNotice(`‘${item.title}’ 완료를 취소했습니다.`);
+                onNotice(
+                  item.isGroup
+                    ? "묶음 기록을 취소하고 처리한 목록으로 되돌렸습니다."
+                    : `‘${item.title}’ 완료를 취소했습니다.`,
+                );
               }}
             >
               <RotateCcw size={14} />
@@ -213,7 +270,9 @@ function TodoRow({
               placeholder="0"
             />
           </label>
-          <button className="primary-button">완료</button>
+          <button className="primary-button">
+            {item.isGroup ? "묶음 기록하기" : "완료"}
+          </button>
         </form>
       )}
       {error && (
@@ -229,7 +288,9 @@ export function TodoBoard() {
   const { data, update } = useData(),
     today = useLocalDate();
   const [params] = useSearchParams(),
-    target = params.get("todo");
+    requested = params.get("todo"),
+    targetItem = data.todos?.find((t) => t.id === requested),
+    target = (targetItem && todoGroup(data, targetItem)?.id) ?? requested;
   const [draftId, setDraftId] = useState(newId),
     [title, setTitle] = useState(""),
     [dueDate, setDueDate] = useState(""),
@@ -244,7 +305,11 @@ export function TodoBoard() {
   const [editing, setEditing] = useState<TodoItem | null>(null),
     [notice, setNotice] = useState(""),
     [error, setError] = useState("");
-  const items = data.todos ?? [],
+  const items = (data.todos ?? []).filter(
+      (t) =>
+        !todoGroup(data, t) &&
+        (!t.isGroup || todoGroupItems(data.todos, t.id).length),
+    ),
     done = items.filter((t) => t.completion).length;
   const rows = [...items]
     .reverse()
@@ -288,7 +353,9 @@ export function TodoBoard() {
       <header className="todo-board-heading">
         <div>
           <h2>일반 할 일</h2>
-          <p>한 번 완료하면 되는 일을 간단하게 기록하세요.</p>
+          <p>
+            HOME에서 처리한 할 일을 모아 총 시간을 한 번에 기록할 수 있습니다.
+          </p>
         </div>
       </header>
       <form className="todo-add-form" onSubmit={add}>

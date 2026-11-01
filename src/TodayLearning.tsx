@@ -10,6 +10,7 @@ import { isEbsCourse } from "./ebs";
 import { ActivityLabels } from "./ui";
 import { QuickActivity } from "./QuickActivity";
 import { formatT, formatDuration, formatTimeT } from "./timeUnits";
+import { todoGroupItems } from "./todos";
 
 function itemLabel(log: StudyLog, material?: Material): string {
   if (!log.item) return "";
@@ -90,6 +91,13 @@ export function TodayLearning({ compact = false }: { compact?: boolean }) {
                   <Link className="today-learning-entry" to={destination}>
                     <div className="today-learning-entry-copy">
                       <h2>{entry.title}</h2>
+                      {entry.source === "todo" && entry.todo.isGroup && (
+                        <p className="todo-group-summary">
+                          {todoGroupItems(data.todos, entry.todo.id)
+                            .map((t) => t.title)
+                            .join(" · ")}
+                        </p>
+                      )}
                       <p>
                         <span className="today-learning-type">
                           {entry.source === "todo" ? "완료" : "작업"}
