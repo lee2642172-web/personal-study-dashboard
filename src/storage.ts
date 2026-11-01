@@ -1,4 +1,5 @@
 import { includeVocabularies, validVocabulary } from "./vocabulary.ts";
+import { includeEea } from "./catalogs/eea.ts";
 import { validTodo } from "./todos.ts";
 import { normalizeVocabularyDayRanges } from "./vocabularyDays.ts";
 import { includeFinancialAccounting } from "./catalogs/financialAccounting.ts";
@@ -208,14 +209,16 @@ export function restoreData(value: unknown): DashboardData {
     throw new Error(
       "저장된 데이터 형식을 읽을 수 없습니다. 원본을 보존하며 저장을 중단했습니다.",
     );
-  return normalizeVocabularyDayRanges(
-    includeVocabularies(
-      includeFinancialAccounting(
-        includeCostManagementAccounting(
-          includeCustomsLawIntro(
-            includeDomesticConsumptionTax(
-              includeCustomsTradeEnglish(
-                removeCancelledDayReviews(connectEbsGroup(data)),
+  return includeEea(
+    normalizeVocabularyDayRanges(
+      includeVocabularies(
+        includeFinancialAccounting(
+          includeCostManagementAccounting(
+            includeCustomsLawIntro(
+              includeDomesticConsumptionTax(
+                includeCustomsTradeEnglish(
+                  removeCancelledDayReviews(connectEbsGroup(data)),
+                ),
               ),
             ),
           ),

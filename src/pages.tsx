@@ -1,4 +1,5 @@
 import { VocabularySummary } from "./Vocabulary";
+import { isEeaMaterial } from "./catalogs/eea";
 import { LanguageTasks, TaskBoard, WorkRecordForm } from "./Tasks";
 import { TodoEditor } from "./Todos";
 import { todoGroupItems } from "./todos";
@@ -129,7 +130,7 @@ function MaterialSummary({
               : "청취 기록 전 · 실제 날짜 별도"
             : m.kind === "lectures"
               ? `${m.lectureCatalogStatus === "ongoing" ? "현재 등록" : "총"} ${m.total ?? "미정"}강 · 전체 미수강`
-              : `${m.total ? `자료 규모 ${m.total} ${m.kind === "units" ? "Units" : m.kind === "days" ? "Days" : m.kind === "book" ? "페이지" : "개"} · ` : ""}${isDayBook(m) ? "복습" : "학습"} 진도 ${p.entries.length ? "기록 있음" : "미입력"}`}
+              : `${m.total ? `자료 규모 ${m.total} ${m.kind === "units" ? "Units" : m.kind === "days" ? "Days" : m.kind === "book" ? "페이지" : "개"} · ` : ""}${isDayBook(m) && !isEeaMaterial(m) ? "복습" : "학습"} 진도 ${p.entries.length ? "기록 있음" : "미입력"}`}
         </p>
       )}
       {m.lectureCatalogStatus === "ongoing" && (
@@ -330,6 +331,17 @@ export function English() {
         <p className="micro-note">
           Basic 하루 약 4~6 Units 계획 · Intermediate는 Basic 목표 회독 이후
           시작 예정 · 목표 이후 추가 회독도 계속 기록할 수 있어요.
+        </p>
+      </Section>
+      <Section title="EEA · English for Everyday Activities" tag="DAY READING">
+        <div className="v1-three-grid">
+          {materials.filter(isEeaMaterial).map((m) => (
+            <MaterialSummary key={m.id} material={m} />
+          ))}
+        </div>
+        <p className="micro-note">
+          낭독편 Day 1~50부터 시작합니다. 각 권의 회독과 학습 기록은 별도로
+          관리합니다.
         </p>
       </Section>
       <Section title="예문 중심 단어 복습" tag="VOCABULARY">

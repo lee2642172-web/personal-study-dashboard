@@ -1,4 +1,5 @@
 import { isDateString } from "./dates.ts";
+import { isEeaMaterial } from "./catalogs/eea.ts";
 import {
   type DashboardData,
   type Material,
@@ -8,7 +9,8 @@ import {
 } from "./model.ts";
 export const isDayBook = (m: Material) =>
   m.kind === "days" &&
-  ((m.area === "english" && ["vocabulary", "phrases"].includes(m.id)) ||
+  ((m.area === "english" &&
+    (["vocabulary", "phrases"].includes(m.id) || isEeaMaterial(m))) ||
     (["chinese", "spanish"].includes(m.area) && !!m.vocabularyId));
 const active = (log: StudyLog) =>
   log.activity !== "system" &&

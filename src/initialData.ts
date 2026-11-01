@@ -1,4 +1,5 @@
 import { includeVocabularies } from "./vocabulary.ts";
+import { createEeaMaterials } from "./catalogs/eea.ts";
 import { createFinancialAccounting } from "./catalogs/financialAccounting.ts";
 import { createCostManagementAccounting } from "./catalogs/costManagementAccounting.ts";
 import { createCustomsLawIntro } from "./catalogs/customsLawIntro.ts";
@@ -57,6 +58,7 @@ export function createInitialData(): DashboardData {
       targetPasses: 10,
       note: "Basic 목표 회독 이후 시작 예정 · 목표 이후에도 추가 회독 가능.",
     }),
+    ...createEeaMaterials(),
     material("vocabulary", "일반 영어 단어장", {
       kind: "days",
       status: "보류",

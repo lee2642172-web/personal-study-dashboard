@@ -23,6 +23,7 @@ import {
 } from "./model";
 import { DayLearningForm } from "./DayLearningForm";
 import { localDate, isDateString } from "./dates";
+import { isEeaMaterial } from "./catalogs/eea";
 import {
   getDayBook,
   ensureDayBook,
@@ -49,6 +50,8 @@ export function DayBook({ material: m }: { material: Material }) {
   );
   const numberedVocabulary =
     !!m.vocabularyId && ["chinese", "spanish"].includes(m.area);
+  const eea = isEeaMaterial(m);
+  const datedLearning = numberedVocabulary || eea;
   const [reviewDate, setReviewDate] = useState(localDate);
   const [reviewMinutes, setReviewMinutes] = useState("");
   useEffect(() => {
@@ -63,7 +66,7 @@ export function DayBook({ material: m }: { material: Material }) {
     return (
       <>
         <PageHeading
-          eyebrow="VOCABULARY"
+          eyebrow={eea ? "DAY READING" : "VOCABULARY"}
           title={m.title}
           description="자료 전체 Day 수를 입력하면 이어서 학습을 시작할 수 있습니다."
         />
@@ -126,9 +129,9 @@ export function DayBook({ material: m }: { material: Material }) {
   }
   function review() {
     const id = newId();
-    const date = numberedVocabulary ? reviewDate : localDate();
+    const date = datedLearning ? reviewDate : localDate();
     const minutes =
-      numberedVocabulary && reviewMinutes.trim() !== ""
+      datedLearning && reviewMinutes.trim() !== ""
         ? Number(reviewMinutes)
         : null;
     if (
@@ -147,7 +150,7 @@ export function DayBook({ material: m }: { material: Material }) {
     );
     setReviewMinutes("");
     setNotice(
-      `Day ${day} · ${date}${minutes === null ? " · 시간 미입력" : ` · ${minutes}분`} 복습을 기록했습니다. 선택한 Day는 그대로 유지됩니다.`,
+      `Day ${day} · ${date}${minutes === null ? " · 시간 미입력" : ` · ${minutes}분`} ${eea ? "학습" : "복습"}을 기록했습니다. 선택한 Day는 그대로 유지됩니다.`,
     );
   }
   function cancel(entry: StudyLog) {
@@ -168,7 +171,7 @@ export function DayBook({ material: m }: { material: Material }) {
       <PageHeading
         eyebrow={`${fieldName(m.area)} · DAY REVIEW`}
         title={m.title}
-        description={`${m.total} Days · 회독을 선택하고 Day별 복습을 기록하세요.`}
+        description={`${m.total} Days · 회독을 선택하고 Day별 ${eea ? "학습" : "복습"}을 기록하세요.`}
         action={
           <button className="secondary-button" onClick={() => setEditing(true)}>
             <Pencil size={15} />
@@ -176,7 +179,10 @@ export function DayBook({ material: m }: { material: Material }) {
           </button>
         }
       />
-      <section className="daybook-panel" aria-label="단어장 통합 학습 패널">
+      <section
+        className="daybook-panel"
+        aria-label={eea ? "Day 통합 회독 학습 패널" : "단어장 통합 학습 패널"}
+      >
         <div className="daybook-toolbar">
           <label>
             학습 회독
@@ -203,7 +209,7 @@ export function DayBook({ material: m }: { material: Material }) {
               >
                 Day 추가·관리
               </Link>
-            ) : (
+            ) : !eea ? (
               <button
                 className="secondary-button"
                 disabled={m.total >= 10000}
@@ -211,7 +217,7 @@ export function DayBook({ material: m }: { material: Material }) {
               >
                 <Plus size={15} />새 Day 학습
               </button>
-            )}
+            ) : null}
             <button
               className="secondary-button"
               onClick={() => {
@@ -231,18 +237,25 @@ export function DayBook({ material: m }: { material: Material }) {
             Day <strong>{day}</strong>
           </h2>
           <p className="daybook-count">
-            신규 학습 <strong>{initialCount}회</strong> · 복습{" "}
+            {!eea && (
+              <>
+                신규 학습 <strong>{initialCount}회</strong> ·{" "}
+              </>
+            )}
+            {eea ? "누적 학습 " : "복습 "}
             <strong>{count}회</strong>
           </p>
-          <p className="daybook-round-count">현재 회독 복습 {currentCount}회</p>
+          <p className="daybook-round-count">
+            현재 회독 {eea ? "학습" : "복습"} {currentCount}회
+          </p>
           <span className={`status-pill ${complete ? "daybook-done" : ""}`}>
             {day > scope
               ? "이전 회독 범위 밖의 Day"
               : complete
-                ? "이 회독에서 복습 완료"
+                ? `이 회독에서 ${eea ? "학습" : "복습"} 완료`
                 : "이 회독에서 기록 전"}
           </span>
-          {numberedVocabulary && (
+          {datedLearning && (
             <div className="daybook-record-inputs">
               <label>
                 학습 날짜
@@ -275,7 +288,7 @@ export function DayBook({ material: m }: { material: Material }) {
             disabled={day > scope}
           >
             <BookOpen size={18} />
-            복습 기록하기
+            {eea ? "학습 기록하기" : "복습 기록하기"}
           </button>
           {day > scope && (
             <p className="micro-note">
@@ -330,7 +343,9 @@ export function DayBook({ material: m }: { material: Material }) {
           <div className="daybook-last-review" aria-label="최근 학습 기록">
             <span>
               최근 기록 ·{" "}
-              {last.initialLearning ? "신규 학습" : `${last.round}회독 복습`}{" "}
+              {last.initialLearning
+                ? "신규 학습"
+                : `${last.round}회독 ${eea ? "학습" : "복습"}`}{" "}
               Day {last.item} · {last.date ?? "날짜 미입력"}
             </span>
             <button className="text-button" onClick={() => cancel(last)}>
@@ -341,18 +356,20 @@ export function DayBook({ material: m }: { material: Material }) {
         )}
         <p className="daybook-notice" role="status" aria-live="polite">
           {notice ||
-            (numberedVocabulary
+            (datedLearning
               ? "선택한 날짜와 시간으로 기록합니다. 기록 후에도 현재 Day를 유지합니다."
               : "오늘 날짜로 기록합니다. 기록 후에도 현재 Day를 유지합니다.")}
         </p>
         <details className="daybook-history">
           <summary>이 Day의 전체 학습 기록 {entries.length}건</summary>
-          <button
-            className="text-button"
-            onClick={() => setNewLearning("current")}
-          >
-            이 Day 신규 학습 기록
-          </button>
+          {!eea && (
+            <button
+              className="text-button"
+              onClick={() => setNewLearning("current")}
+            >
+              이 Day 신규 학습 기록
+            </button>
+          )}
           {entries.length ? (
             entries.map((entry) => (
               <article key={entry.id}>
@@ -365,7 +382,9 @@ export function DayBook({ material: m }: { material: Material }) {
                     {entry.completed
                       ? entry.initialLearning
                         ? "신규 학습 완료"
-                        : "복습 완료"
+                        : eea
+                          ? "학습 완료"
+                          : "복습 완료"
                       : "진행 중"}{" "}
                     ·{" "}
                     {entry.minutes === null
@@ -462,8 +481,10 @@ export function DayBook({ material: m }: { material: Material }) {
         </label>
         {!numberedVocabulary && <p>{m.note}</p>}
         <p>
-          단어 내용은 기존 Excel 자료를 참고하세요. 학습 날짜와 시간은 기록
-          수정에서도 변경할 수 있습니다.
+          {eea
+            ? "학습 내용은 EEA 교재를 참고하세요."
+            : "단어 내용은 기존 Excel 자료를 참고하세요."}{" "}
+          학습 날짜와 시간은 기록 수정에서도 변경할 수 있습니다.
         </p>
         <p>
           목표 {m.targetPasses ?? "미정"}회독 · 목표 이후에도 회독을 계속 추가할

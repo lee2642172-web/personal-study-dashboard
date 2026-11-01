@@ -2,6 +2,14 @@ import type { DashboardData } from "./model.ts";
 import { progress } from "./model.ts";
 import { getDayBook, dayRoundTotal, isDayBook } from "./dayLearning.ts";
 import { isEbsCourse } from "./ebs.ts";
+import { EEA_READING_ID } from "./catalogs/eea.ts";
+
+/** HOME highlights the two selected books; the full English library stays intact. */
+export function homeEnglishMaterialProgress(data: DashboardData) {
+  return englishMaterialProgress(data).filter(
+    ({ material }) => material.id === "basic" || material.id === EEA_READING_ID,
+  );
+}
 
 /** Read-only view: each material retains its own unit, round and saved learning position. */
 export function englishMaterialProgress(data: DashboardData) {
