@@ -210,9 +210,9 @@ export function CustomsDashboard() {
           </h2>
         </div>
         <label>
-          <span className="sr-only">HOME 관세사 회독</span>
+          <span className="sr-only">관세사 회독</span>
           <select
-            aria-label="HOME 관세사 회독"
+            aria-label="관세사 회독"
             value={round}
             onChange={(e) => setRound(Number(e.target.value))}
           >

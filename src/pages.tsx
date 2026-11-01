@@ -266,13 +266,6 @@ export function Home() {
           <EnglishDashboard />
         </div>
       </Section>
-      <Section
-        title="관세사 학습 현황"
-        tag="CERTIFICATIONS · MAIN"
-        link="/fields/customs"
-      >
-        <CustomsDashboard />
-      </Section>
     </>
   );
 }
@@ -416,6 +409,7 @@ export function FieldPage() {
           </button>
         }
       />
+      {field.id === "customs" && <CustomsDashboard />}
       {field.category === "languages" && (
         <LanguageTasks key={field.id} area={field.id} />
       )}
