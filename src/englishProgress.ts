@@ -19,7 +19,10 @@ export function englishMaterialProgress(data: DashboardData) {
       const tracked = ["units", "days", "book", "lectures"].includes(
         material.kind,
       );
-      const book = isDayBook(material) ? getDayBook(data, material) : null;
+      const book =
+        isDayBook(material) && material.total
+          ? getDayBook(data, material)
+          : null;
       const valid = data.logs.filter(
         (log) =>
           log.materialId === material.id &&

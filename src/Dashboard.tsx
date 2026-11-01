@@ -334,7 +334,7 @@ export function EnglishDashboard() {
                 )}
                 <small>
                   {position !== null
-                    ? `학습 위치 Day ${position}`
+                    ? `학습 위치 ${material.kind === "units" ? "Unit" : "Day"} ${position}`
                     : latest
                       ? `최근 완료 ${material.kind === "units" ? "Unit" : material.kind === "days" ? "Day" : material.kind === "book" ? "페이지" : "강"} ${latest.item}`
                       : "학습 기록 전"}
@@ -397,10 +397,11 @@ export function LanguageSnapshot() {
               <Link to={`/materials/${m.id}`}>
                 <strong>{m.title}</strong>
                 <span>
-                  {book.activeRound}회독 · 학습 위치 Day {round.lastOpenedDay}
+                  {book.activeRound}회독 · 학습 위치{" "}
+                  {m.kind === "units" ? "Unit" : "Day"} {round.lastOpenedDay}
                   <small>
                     {logs.length
-                      ? `최근 복습 Day ${[...logs].reverse().find((l) => !l.initialLearning)?.item ?? "미기록"}`
+                      ? `최근 학습 ${m.kind === "units" ? "Unit" : "Day"} ${[...logs].reverse().find((l) => !l.initialLearning)?.item ?? "미기록"}`
                       : "아직 학습 기록 없음"}{" "}
                     · {m.status}
                   </small>

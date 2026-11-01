@@ -24,6 +24,7 @@ import {
 import { DayLearningForm } from "./DayLearningForm";
 import { localDate, isDateString } from "./dates";
 import { isEeaMaterial } from "./catalogs/eea";
+import { defaultStudyMinutes, isBasicStudyBook } from "./studyBooks";
 import {
   getDayBook,
   ensureDayBook,
@@ -51,9 +52,19 @@ export function DayBook({ material: m }: { material: Material }) {
   const numberedVocabulary =
     !!m.vocabularyId && ["chinese", "spanish"].includes(m.area);
   const eea = isEeaMaterial(m);
-  const datedLearning = numberedVocabulary || eea;
+  const unitBook = isBasicStudyBook(m);
+  const studyBook = eea || unitBook;
+  const itemLabel = unitBook ? "Unit" : "Day";
+  const itemPlural = unitBook ? "Units" : "Days";
+  const datedLearning = numberedVocabulary || studyBook;
+  const initialMinutes = defaultStudyMinutes(m);
+  const minuteDefault = initialMinutes === null ? "" : String(initialMinutes);
   const [reviewDate, setReviewDate] = useState(localDate);
-  const [reviewMinutes, setReviewMinutes] = useState("");
+  const [reviewMinutes, setReviewMinutes] = useState(minuteDefault);
+  useEffect(() => {
+    setReviewMinutes(minuteDefault);
+    setReviewDate(localDate());
+  }, [m.id, minuteDefault]);
   useEffect(() => {
     update((d) => ensureDayBook(d, m.id));
   }, [m.id, m.total, update]);
@@ -66,9 +77,9 @@ export function DayBook({ material: m }: { material: Material }) {
     return (
       <>
         <PageHeading
-          eyebrow={eea ? "DAY READING" : "VOCABULARY"}
+          eyebrow={studyBook ? "STUDY BOOK" : "VOCABULARY"}
           title={m.title}
-          description="자료 전체 Day 수를 입력하면 이어서 학습을 시작할 수 있습니다."
+          description={`자료 전체 ${itemLabel} 수를 입력하면 이어서 학습을 시작할 수 있습니다.`}
         />
         {m.vocabularyId ? (
           <Link className="primary-button" to={`/vocabulary/${m.vocabularyId}`}>
@@ -121,7 +132,7 @@ export function DayBook({ material: m }: { material: Material }) {
     );
   function browse(value: number) {
     if (!Number.isInteger(value) || value < 1 || value > m.total!) {
-      setError(`Day 1~${m.total} 사이의 번호를 입력해 주세요.`);
+      setError(`${itemLabel} 1~${m.total} 사이의 번호를 입력해 주세요.`);
       return;
     }
     setError("");
@@ -148,15 +159,15 @@ export function DayBook({ material: m }: { material: Material }) {
     update((d) =>
       recordDayReview(d, m.id, book.activeRound, day, id, date, minutes),
     );
-    setReviewMinutes("");
+    setReviewMinutes(minuteDefault);
     setNotice(
-      `Day ${day} · ${date}${minutes === null ? " · 시간 미입력" : ` · ${minutes}분`} ${eea ? "학습" : "복습"}을 기록했습니다. 선택한 Day는 그대로 유지됩니다.`,
+      `${itemLabel} ${day} · ${date}${minutes === null ? " · 시간 미입력" : ` · ${minutes}분`} ${studyBook ? "학습" : "복습"}을 기록했습니다. 선택한 ${itemLabel} 위치는 그대로 유지됩니다.`,
     );
   }
   function cancel(entry: StudyLog) {
     update((d) => cancelDayReview(d, entry.id));
     setNotice(
-      `Day ${entry.item} ${entry.initialLearning ? "신규 학습" : "복습"} 기록을 삭제했습니다. ${entry.initialLearning ? "Day는 유지됩니다." : "선택한 Day는 그대로 유지됩니다."}`,
+      `${itemLabel} ${entry.item} ${entry.initialLearning ? "신규 학습" : studyBook ? "학습" : "복습"} 기록을 삭제했습니다. ${entry.initialLearning ? `${itemLabel} 위치는 유지됩니다.` : `선택한 ${itemLabel} 위치는 그대로 유지됩니다.`}`,
     );
   }
   return (
@@ -169,9 +180,9 @@ export function DayBook({ material: m }: { material: Material }) {
         {fieldName(m.area)} 학습으로
       </Link>
       <PageHeading
-        eyebrow={`${fieldName(m.area)} · DAY REVIEW`}
+        eyebrow={`${fieldName(m.area)} · ${unitBook ? "UNIT" : "DAY"} STUDY`}
         title={m.title}
-        description={`${m.total} Days · 회독을 선택하고 Day별 ${eea ? "학습" : "복습"}을 기록하세요.`}
+        description={`${m.total} ${itemPlural} · 회독을 선택하고 ${itemLabel}별 ${studyBook ? "학습" : "복습"}을 기록하세요.`}
         action={
           <button className="secondary-button" onClick={() => setEditing(true)}>
             <Pencil size={15} />
@@ -181,7 +192,11 @@ export function DayBook({ material: m }: { material: Material }) {
       />
       <section
         className="daybook-panel"
-        aria-label={eea ? "Day 통합 회독 학습 패널" : "단어장 통합 학습 패널"}
+        aria-label={
+          studyBook
+            ? `${itemLabel} 통합 회독 학습 패널`
+            : "단어장 통합 학습 패널"
+        }
       >
         <div className="daybook-toolbar">
           <label>
@@ -209,7 +224,7 @@ export function DayBook({ material: m }: { material: Material }) {
               >
                 Day 추가·관리
               </Link>
-            ) : !eea ? (
+            ) : !studyBook ? (
               <button
                 className="secondary-button"
                 disabled={m.total >= 10000}
@@ -231,28 +246,28 @@ export function DayBook({ material: m }: { material: Material }) {
         </div>
         <div className="daybook-focus">
           <p className="eyebrow">
-            {book.activeRound}회독 · 총 {m.total} Days
+            {book.activeRound}회독 · 총 {m.total} {itemPlural}
           </p>
           <h2>
-            Day <strong>{day}</strong>
+            {itemLabel} <strong>{day}</strong>
           </h2>
           <p className="daybook-count">
-            {!eea && (
+            {!studyBook && (
               <>
                 신규 학습 <strong>{initialCount}회</strong> ·{" "}
               </>
             )}
-            {eea ? "누적 학습 " : "복습 "}
+            {studyBook ? "누적 학습 " : "복습 "}
             <strong>{count}회</strong>
           </p>
           <p className="daybook-round-count">
-            현재 회독 {eea ? "학습" : "복습"} {currentCount}회
+            현재 회독 {studyBook ? "학습" : "복습"} {currentCount}회
           </p>
           <span className={`status-pill ${complete ? "daybook-done" : ""}`}>
             {day > scope
-              ? "이전 회독 범위 밖의 Day"
+              ? `이전 회독 범위 밖의 ${itemLabel}`
               : complete
-                ? `이 회독에서 ${eea ? "학습" : "복습"} 완료`
+                ? `이 회독에서 ${studyBook ? "학습" : "복습"} 완료`
                 : "이 회독에서 기록 전"}
           </span>
           {datedLearning && (
@@ -288,28 +303,28 @@ export function DayBook({ material: m }: { material: Material }) {
             disabled={day > scope}
           >
             <BookOpen size={18} />
-            {eea ? "학습 기록하기" : "복습 기록하기"}
+            {studyBook ? "학습 기록하기" : "복습 기록하기"}
           </button>
           {day > scope && (
             <p className="micro-note">
-              이 회독의 범위는 Day 1~{scope}입니다. 추가한 Day는 새 회독에서
-              복습하세요.
+              이 회독의 범위는 {itemLabel} 1~{scope}입니다. 추가한 항목은 새
+              회독에서 학습하세요.
             </p>
           )}
         </div>
-        <div className="daybook-navigation" aria-label="Day 이동">
+        <div className="daybook-navigation" aria-label={`${itemLabel} 이동`}>
           <button
             className="secondary-button"
             disabled={day === 1}
             onClick={() => browse(day - 1)}
           >
             <ChevronLeft size={16} />
-            이전 Day
+            이전 {itemLabel}
           </button>
           <label>
-            Day 바로가기
+            {itemLabel} 바로가기
             <input
-              aria-label="Day 바로가기"
+              aria-label={`${itemLabel} 바로가기`}
               type="number"
               min="1"
               max={m.total}
@@ -330,7 +345,7 @@ export function DayBook({ material: m }: { material: Material }) {
             disabled={day === m.total}
             onClick={() => browse(day + 1)}
           >
-            다음 Day
+            다음 {itemLabel}
             <ChevronRight size={16} />
           </button>
         </div>
@@ -345,8 +360,8 @@ export function DayBook({ material: m }: { material: Material }) {
               최근 기록 ·{" "}
               {last.initialLearning
                 ? "신규 학습"
-                : `${last.round}회독 ${eea ? "학습" : "복습"}`}{" "}
-              Day {last.item} · {last.date ?? "날짜 미입력"}
+                : `${last.round}회독 ${studyBook ? "학습" : "복습"}`}{" "}
+              {itemLabel} {last.item} · {last.date ?? "날짜 미입력"}
             </span>
             <button className="text-button" onClick={() => cancel(last)}>
               <RotateCcw size={14} />
@@ -357,12 +372,14 @@ export function DayBook({ material: m }: { material: Material }) {
         <p className="daybook-notice" role="status" aria-live="polite">
           {notice ||
             (datedLearning
-              ? "선택한 날짜와 시간으로 기록합니다. 기록 후에도 현재 Day를 유지합니다."
-              : "오늘 날짜로 기록합니다. 기록 후에도 현재 Day를 유지합니다.")}
+              ? `선택한 날짜와 시간으로 기록합니다. 기록 후에도 현재 ${itemLabel}를 유지합니다.`
+              : `오늘 날짜로 기록합니다. 기록 후에도 현재 ${itemLabel}를 유지합니다.`)}
         </p>
         <details className="daybook-history">
-          <summary>이 Day의 전체 학습 기록 {entries.length}건</summary>
-          {!eea && (
+          <summary>
+            이 {itemLabel}의 전체 학습 기록 {entries.length}건
+          </summary>
+          {!studyBook && (
             <button
               className="text-button"
               onClick={() => setNewLearning("current")}
@@ -382,7 +399,7 @@ export function DayBook({ material: m }: { material: Material }) {
                     {entry.completed
                       ? entry.initialLearning
                         ? "신규 학습 완료"
-                        : eea
+                        : studyBook
                           ? "학습 완료"
                           : "복습 완료"
                       : "진행 중"}{" "}
@@ -408,7 +425,7 @@ export function DayBook({ material: m }: { material: Material }) {
               </article>
             ))
           ) : (
-            <Empty>이 Day의 학습 기록이 없습니다.</Empty>
+            <Empty>이 {itemLabel}의 학습 기록이 없습니다.</Empty>
           )}
         </details>
       </section>
@@ -417,18 +434,18 @@ export function DayBook({ material: m }: { material: Material }) {
         <Progress
           done={p.count}
           total={scope}
-          label={`${book.activeRound}회독 완료한 Day`}
+          label={`${book.activeRound}회독 완료한 ${itemLabel}`}
         />
         <p>
           {round.nextDay === null
-            ? "이번 회독의 모든 Day를 완료했습니다."
-            : `다음 미완료 Day ${round.nextDay}`}
+            ? `이번 회독의 모든 ${itemLabel}를 완료했습니다.`
+            : `다음 미완료 ${itemLabel} ${round.nextDay}`}
           {round.nextDay !== null && round.nextDay !== day && (
             <button
               className="text-button"
               onClick={() => browse(round.nextDay!)}
             >
-              해당 Day 열기
+              해당 {itemLabel} 열기
             </button>
           )}
         </p>
@@ -481,8 +498,8 @@ export function DayBook({ material: m }: { material: Material }) {
         </label>
         {!numberedVocabulary && <p>{m.note}</p>}
         <p>
-          {eea
-            ? "학습 내용은 EEA 교재를 참고하세요."
+          {studyBook
+            ? "학습 내용은 교재를 참고하세요."
             : "단어 내용은 기존 Excel 자료를 참고하세요."}{" "}
           학습 날짜와 시간은 기록 수정에서도 변경할 수 있습니다.
         </p>

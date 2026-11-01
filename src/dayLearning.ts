@@ -1,5 +1,6 @@
 import { isDateString } from "./dates.ts";
 import { isEeaMaterial } from "./catalogs/eea.ts";
+import { isBasicStudyBook } from "./studyBooks.ts";
 import {
   type DashboardData,
   type Material,
@@ -8,10 +9,11 @@ import {
   type DayRoundState,
 } from "./model.ts";
 export const isDayBook = (m: Material) =>
-  m.kind === "days" &&
-  ((m.area === "english" &&
-    (["vocabulary", "phrases"].includes(m.id) || isEeaMaterial(m))) ||
-    (["chinese", "spanish"].includes(m.area) && !!m.vocabularyId));
+  isBasicStudyBook(m) ||
+  (m.kind === "days" &&
+    ((m.area === "english" &&
+      (["vocabulary", "phrases"].includes(m.id) || isEeaMaterial(m))) ||
+      (["chinese", "spanish"].includes(m.area) && !!m.vocabularyId)));
 const active = (log: StudyLog) =>
   log.activity !== "system" &&
   !log.initialLearning &&
@@ -19,6 +21,15 @@ const active = (log: StudyLog) =>
   !log.voided;
 const totalDays = (m: Material) =>
   m.total && Number.isInteger(m.total) && m.total > 0 ? m.total : 0;
+const roundLog = (log: StudyLog, m: Material) =>
+  log.materialId === m.id &&
+  log.activity !== "system" &&
+  !log.initialLearning &&
+  (!isBasicStudyBook(m) ||
+    (!log.voided &&
+      /^\d+$/.test(log.item) &&
+      Number(log.item) >= 1 &&
+      (m.total === null || Number(log.item) <= m.total)));
 export function dayCompleted(
   logs: StudyLog[],
   materialId: string,
@@ -58,14 +69,7 @@ export function getDayBook(data: DashboardData, m: Material): DayBookState {
     ...new Set([
       1,
       ...(stored?.rounds.map((r) => r.round) ?? []),
-      ...data.logs
-        .filter(
-          (l) =>
-            l.materialId === m.id &&
-            l.activity !== "system" &&
-            !l.initialLearning,
-        )
-        .map((l) => l.round),
+      ...data.logs.filter((l) => roundLog(l, m)).map((l) => l.round),
     ]),
   ].sort((a, b) => a - b);
   return {
@@ -152,10 +156,7 @@ export function startDayRound(data: DashboardData, id: string): DashboardData {
   if (!m) return data;
   const book = getDayBook(data, m);
   const highestLog = data.logs
-    .filter(
-      (l) =>
-        l.materialId === id && l.activity !== "system" && !l.initialLearning,
-    )
+    .filter((l) => roundLog(l, m))
     .reduce((n, l) => Math.max(n, l.round), 0);
   const round =
     book.rounds.reduce((n, r) => Math.max(n, r.round), highestLog) + 1;
@@ -304,7 +305,7 @@ export function recordDayReview(
     round,
     date,
     minutes,
-    activity: "review",
+    activity: isBasicStudyBook(m) && round === 1 ? "study" : "review",
     note: "",
     topic: "",
     writing: "",
@@ -357,6 +358,7 @@ export function recordInitialDayLearning(
   if (
     !material ||
     !isDayBook(material) ||
+    material.kind !== "days" ||
     !Number.isInteger(day) ||
     day < 1 ||
     day > totalDays(material) ||
@@ -405,6 +407,7 @@ export function addDayLearning(
   if (
     !material ||
     !isDayBook(material) ||
+    material.kind !== "days" ||
     !!material.vocabularyId ||
     expectedDay !== totalDays(material) + 1 ||
     expectedDay > 10000

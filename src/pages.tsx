@@ -130,7 +130,7 @@ function MaterialSummary({
               : "청취 기록 전 · 실제 날짜 별도"
             : m.kind === "lectures"
               ? `${m.lectureCatalogStatus === "ongoing" ? "현재 등록" : "총"} ${m.total ?? "미정"}강 · 전체 미수강`
-              : `${m.total ? `자료 규모 ${m.total} ${m.kind === "units" ? "Units" : m.kind === "days" ? "Days" : m.kind === "book" ? "페이지" : "개"} · ` : ""}${isDayBook(m) && !isEeaMaterial(m) ? "복습" : "학습"} 진도 ${p.entries.length ? "기록 있음" : "미입력"}`}
+              : `${m.total ? `자료 규모 ${m.total} ${m.kind === "units" ? "Units" : m.kind === "days" ? "Days" : m.kind === "book" ? "페이지" : "개"} · ` : ""}${m.kind === "days" && isDayBook(m) && !isEeaMaterial(m) ? "복습" : "학습"} 진도 ${p.entries.length ? "기록 있음" : "미입력"}`}
         </p>
       )}
       {m.lectureCatalogStatus === "ongoing" && (

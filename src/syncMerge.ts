@@ -266,7 +266,12 @@ export function renderDocument(state: SyncState): DashboardData {
   if (data.dayBooks) {
     data.dayBooks = data.dayBooks.map((stored) => {
       const material = data.materials.find((m) => m.id === stored.materialId);
-      if (!material || !isDayBook(material)) return stored;
+      if (
+        !material ||
+        !isDayBook(material) ||
+        (material.kind === "units" && !material.total)
+      )
+        return stored;
       const highestLog = Math.max(
         0,
         ...data.logs
@@ -276,11 +281,10 @@ export function renderDocument(state: SyncState): DashboardData {
           )
           .map((l) => Number(l.item)),
       );
-      material.total = Math.max(
-        material.total ?? 1,
-        stored.totalDays,
-        highestLog,
-      );
+      material.total =
+        material.kind === "units"
+          ? material.total
+          : Math.max(material.total ?? 1, stored.totalDays, highestLog);
       const book = getDayBook(data, material);
       const rounds = book.rounds.map((round) => {
         const next = {
