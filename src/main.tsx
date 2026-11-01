@@ -12,6 +12,7 @@ import {
 } from "react-router-dom";
 import {
   LayoutGrid,
+  House,
   CalendarDays,
   Globe2,
   GraduationCap,
@@ -133,7 +134,17 @@ function App() {
       <main>
         <header className="topbar">
           <span>
-            나의 워크스페이스 <ChevronRight size={13} />
+            <Link
+              to="/"
+              className="icon-button home-icon-button"
+              aria-label="메인 화면으로 이동"
+              title="HOME"
+            >
+              <House size={18} aria-hidden="true" />
+            </Link>
+            <span className="topbar-workspace">
+              나의 워크스페이스 <ChevronRight size={13} />
+            </span>
             <strong>{title}</strong>
           </span>
           <SyncButton onOpen={() => setSyncOpen(true)} />

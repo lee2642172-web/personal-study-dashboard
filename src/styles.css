@@ -206,6 +206,29 @@ main {
   font-weight: 500;
   color: #627084;
 }
+.topbar .home-icon-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 10px;
+  color: #6284c6;
+}
+.home-icon-button:focus-visible {
+  outline: 2px solid #6284c6;
+  outline-offset: 2px;
+}
+.topbar-workspace {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 650px) {
+  .topbar-workspace {
+    display: none;
+  }
+}
 .sample {
   display: flex;
   gap: 6px;
