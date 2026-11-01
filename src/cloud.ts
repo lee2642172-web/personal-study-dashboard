@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { restoreData } from "./storage.ts";
 import type { CloudRepository, CloudSnapshot } from "./sync.ts";
 import { captureUntrackedDocument } from "./syncMerge.ts";
+import { authStorageKey } from "./authRestore.ts";
 
 export type CloudConfig = { url: string; key: string };
 export const CLOUD_CONFIG_KEY = "personal-study-dashboard:cloud-config";
@@ -47,15 +48,22 @@ export function loadCloudConfig(
     ? value
     : null;
 }
+let activeClient: { url: string; key: string; client: SupabaseClient } | null =
+  null;
 export function makeCloudClient(config: CloudConfig) {
-  return createClient(config.url, config.key, {
+  if (activeClient?.url === config.url && activeClient.key === config.key)
+    return activeClient.client;
+  activeClient?.client.auth.stopAutoRefresh();
+  const client = createClient(config.url, config.key, {
     auth: {
-      storageKey: `study-dashboard-auth:${new URL(config.url).hostname}`,
+      storageKey: authStorageKey(config.url),
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
     },
   });
+  activeClient = { ...config, client };
+  return client;
 }
 function snapshot(row: {
   payload: unknown;

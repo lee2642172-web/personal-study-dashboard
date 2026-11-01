@@ -59,6 +59,42 @@ function server(initial = null) {
 const data = (s) => s.getSnapshot().data;
 const ids = (s) => new Set((data(s).todos ?? []).map((t) => t.id));
 
+test("paused authentication retains account records, accepts offline edits and reconnects without remote access before validation", async () => {
+  const storage = memory(),
+    db = server(),
+    store = new DashboardStore(storage);
+  await store.connect("p:u", db);
+  store.update(add("saved-before-refresh"));
+  await store.sync();
+  const writes = db.writes.length,
+    reads = db.reads;
+  store.pauseConnection();
+  store.update(add("while-refresh-offline"));
+  await store.sync();
+  assert.equal(db.writes.length, writes);
+  assert.equal(db.reads, reads);
+  assert.ok(ids(store).has("saved-before-refresh"));
+  const reopened = new DashboardStore(storage);
+  await reopened.connect("p:u", null);
+  assert.equal(reopened.getSnapshot().phase, "offline");
+  assert.deepEqual(
+    ids(reopened),
+    new Set(["saved-before-refresh", "while-refresh-offline"]),
+  );
+  assert.equal(db.reads, reads);
+  await reopened.connect("p:u", db);
+  assert.equal(reopened.getSnapshot().phase, "saved");
+  assert.deepEqual(
+    ids(reopened),
+    new Set(["saved-before-refresh", "while-refresh-offline"]),
+  );
+  const other = new DashboardStore(storage);
+  await other.connect("p:other", null);
+  assert.equal(ids(other).size, 0);
+  reopened.disconnect();
+  assert.equal(ids(reopened).size, 0);
+});
+
 test("first login automatically merges existing local and online records without a snapshot-choice step", async () => {
   const local = add("phone")(createInitialData()),
     storage = memory(local),

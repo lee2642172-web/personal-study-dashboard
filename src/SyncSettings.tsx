@@ -3,6 +3,7 @@ import { Cloud, RefreshCw } from "lucide-react";
 import { useData } from "./state";
 import { syncLabels } from "./sync";
 import { EmailLoginError } from "./loginEmail";
+import { readLoginPreference } from "./authRestore";
 import { exportData } from "./storage";
 import type { DashboardData } from "./model";
 import { Dialog } from "./ui";
@@ -60,17 +61,27 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
     useData();
   const [url, setUrl] = useState(cloud.config?.url ?? ""),
     [key, setKey] = useState("");
-  const [email, setEmail] = useState(""),
+  const [email, setEmail] = useState(
+      () => readLoginPreference(cloud.config?.url ?? "")?.email ?? "",
+    ),
     [notice, setNotice] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
-  const [loginMethod, setLoginMethod] = useState<"email" | "password">("email");
+  const [loginMethod, setLoginMethod] = useState<"email" | "password">(
+    () => readLoginPreference(cloud.config?.url ?? "")?.method ?? "email",
+  );
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [nextEmailAt, setNextEmailAt] = useState(0);
   const [now, setNow] = useState(Date.now());
   const emailWait = Math.max(0, Math.ceil((nextEmailAt - now) / 1000));
+  useEffect(() => {
+    const previous = readLoginPreference(cloud.config?.url ?? "");
+    setEmail(previous?.email ?? "");
+    setLoginMethod(previous?.method ?? "email");
+    setPassword("");
+  }, [cloud.config?.url]);
   useEffect(() => {
     if (!nextEmailAt) return;
     const timer = setInterval(() => {
@@ -249,7 +260,10 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
                 <input
                   type="email"
                   required
-                  autoComplete="email"
+                  name="username"
+                  autoComplete={
+                    loginMethod === "password" ? "username" : "email"
+                  }
                   autoCapitalize="none"
                   autoCorrect="off"
                   value={email}
@@ -262,6 +276,7 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
                   비밀번호
                   <input
                     type="password"
+                    name="password"
                     required
                     autoComplete="current-password"
                     value={password}
@@ -280,6 +295,10 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
                     : "이메일로 로그인"}
               </button>
             </form>
+            <p className="micro-note">
+              한 번 로그인하면 이 브라우저에 저장되어 다음 접속 시 자동으로
+              연결됩니다. 비밀번호 자체는 대시보드에 저장하지 않습니다.
+            </p>
             <p className="micro-note">
               로그인 중인 PC·iPad의 ‘비밀번호 설정·변경’에서 비밀번호를 만든 뒤,
               같은 이메일로 비밀번호 로그인을 이용할 수 있습니다. 비밀번호
@@ -310,7 +329,8 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
               <summary>비밀번호 설정·변경</summary>
               <p className="micro-note">
                 현재 계정에 비밀번호를 설정하면 다른 기기에서 인증 메일 없이
-                로그인할 수 있습니다. 기존 학습 기록은 그대로 사용합니다.
+                로그인할 수 있습니다. 설정·변경 시 다른 기기의 기존 로그인은
+                해제되어 그 기기에서 한 번 다시 로그인해야 합니다.
               </p>
               <form
                 className="sync-form"
@@ -321,7 +341,7 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
                     await cloud.setPassword(newPassword, confirmation);
                     setNewPassword("");
                     setConfirmation("");
-                  }, "비밀번호를 저장했습니다. 휴대폰에서 같은 이메일과 이 비밀번호로 로그인하세요.");
+                  }, "비밀번호를 저장했습니다. 다른 기기에서는 같은 이메일과 새 비밀번호로 한 번 로그인해 주세요. 이후 이 브라우저의 로그인이 자동 유지됩니다.");
                 }}
               >
                 <label>

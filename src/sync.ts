@@ -171,7 +171,7 @@ export class DashboardStore {
     this.emit({ data, ...(this.remote ? { phase: "pending" as const } : {}) });
     this.persist();
   };
-  async connect(account: string, remote: CloudRepository) {
+  async connect(account: string, remote: CloudRepository | null) {
     ++this.epoch;
     this.remote = remote;
     this.key = accountStorageKey(account);
@@ -224,7 +224,13 @@ export class DashboardStore {
         backups: this.cache.backups,
       });
       if (!this.persist()) return;
-      await this.sync();
+      if (remote) await this.sync();
+      else
+        this.emit({
+          phase: "offline",
+          message:
+            "이 기기에 보관한 계정 기록입니다. 로그인 연결이 복구되면 자동으로 동기화합니다.",
+        });
     } catch {
       this.protectedStorage = true;
       this.emit({
@@ -241,6 +247,16 @@ export class DashboardStore {
     this.key = STORAGE_KEY;
     this.view = this.guest();
     this.emit({});
+  };
+  pauseConnection = () => {
+    ++this.epoch;
+    this.remote = null;
+    if (this.cache)
+      this.emit({
+        phase: "offline",
+        message:
+          "로그인 연결을 확인 중입니다. 현재 기록은 이 계정의 기기에 계속 보관합니다.",
+      });
   };
   private dirty() {
     return !!this.cache && !equalData(this.cache.data, this.cache.base);
