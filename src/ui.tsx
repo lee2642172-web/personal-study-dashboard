@@ -91,21 +91,30 @@ export function Dialog({
   title,
   onClose,
   children,
+  className = "",
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  className?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current;
+    const trigger =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     dialog?.showModal();
-    return () => dialog?.close();
+    return () => {
+      dialog?.close();
+      if (trigger?.isConnected) trigger.focus();
+    };
   }, []);
   return (
     <dialog
       ref={ref}
-      className="v1-dialog"
+      className={`v1-dialog ${className}`}
       onCancel={(event) => {
         event.preventDefault();
         onClose();

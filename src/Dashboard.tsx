@@ -13,40 +13,82 @@ import { getDayBook, isDayBook } from "./dayLearning";
 import { Progress } from "./ui";
 import { homeEnglishMaterialProgress } from "./englishProgress";
 import { formatT, formatDuration, formatTimeT } from "./timeUnits";
+import { StudyTimeDetails } from "./StudyTimeDetails";
 
 export function StudyTimeSummary() {
   const { data } = useData(),
     today = useLocalDate();
   const summary = studySummary(dashboardTimeEntries(data), today);
+  const [detail, setDetail] = useState<"today" | "week" | null>(null);
   return (
-    <section className="study-time-summary" aria-label="학습시간 요약">
-      {[
-        {
-          label: "오늘 학습시간",
-          minutes: summary.today,
-          note: today.replaceAll("-", "."),
-        },
-        {
-          label: "이번 주 학습시간",
-          minutes: summary.week,
-          note: "월요일 ~ 일요일",
-        },
-        {
-          label: "이번 달 학습시간",
-          minutes: summary.month,
-          note: `${Number(today.slice(5, 7))}월 1일 ~ 오늘`,
-        },
-      ].map(({ label, minutes, note }) => (
-        <article key={label} className="dashboard-time-stat">
-          <span>{label}</span>
-          <strong>
-            <span>{formatT(minutes)}</span>{" "}
-            <small>({formatDuration(minutes)})</small>
-          </strong>
-          <p>{note}</p>
-        </article>
-      ))}
-    </section>
+    <>
+      <section className="study-time-summary" aria-label="학습시간 요약">
+        {[
+          {
+            label: "오늘 학습시간",
+            minutes: summary.today,
+            note: today.replaceAll("-", "."),
+            mode: "today" as const,
+          },
+          {
+            label: "이번 주 학습시간",
+            minutes: summary.week,
+            note: "월요일 ~ 일요일",
+            mode: "week" as const,
+          },
+          {
+            label: "이번 달 학습시간",
+            minutes: summary.month,
+            note: `${Number(today.slice(5, 7))}월 1일 ~ 오늘`,
+            mode: null,
+          },
+        ].map(({ label, minutes, note, mode }) => {
+          const content = (
+            <>
+              <span>{label}</span>
+              <strong>
+                <span>{formatT(minutes)}</span>{" "}
+                <small>({formatDuration(minutes)})</small>
+              </strong>
+              <p>
+                {note}
+                {mode && (
+                  <span className="study-time-open-hint">
+                    {mode === "today"
+                      ? "기록 목록 보기 ↗"
+                      : "주간 캘린더 보기 ↗"}
+                  </span>
+                )}
+              </p>
+            </>
+          );
+          return mode ? (
+            <button
+              key={label}
+              type="button"
+              className="dashboard-time-stat is-interactive"
+              aria-label={`${label} 상세 보기`}
+              aria-haspopup="dialog"
+              onClick={() => setDetail(mode)}
+            >
+              {content}
+            </button>
+          ) : (
+            <article key={label} className="dashboard-time-stat">
+              {content}
+            </article>
+          );
+        })}
+      </section>
+      {detail && (
+        <StudyTimeDetails
+          key={detail}
+          mode={detail}
+          today={today}
+          onClose={() => setDetail(null)}
+        />
+      )}
+    </>
   );
 }
 

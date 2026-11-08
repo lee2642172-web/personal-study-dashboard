@@ -1,7 +1,7 @@
 import { type DashboardData, type StudyLog, type FieldId } from "./model.ts";
 import { isDateString, shiftDate, calendarDates, weekStart } from "./dates.ts";
 import { lectureCompleted } from "./lectureLearning.ts";
-import { activityEntries } from "./activities.ts";
+import { activityEntries, type ActivityEntry } from "./activities.ts";
 
 type TimeEntry = Pick<StudyLog, "id" | "date" | "minutes"> & {
   activity: StudyLog["activity"] | "todo" | "task";
@@ -48,6 +48,40 @@ export function studySummary(logs: TimeEntry[], asOf: string) {
     week: sum(weekStart(asOf)),
     month: sum(`${asOf.slice(0, 7)}-01`),
   };
+}
+/** The drill-down uses the same original owners and actual dates as HOME totals. */
+export function studyActivityDays(
+  data: DashboardData,
+  asOf: string,
+  start = asOf,
+  count = 1,
+) {
+  const grouped = new Map<string, ActivityEntry[]>();
+  for (const entry of activityEntries(data)) {
+    if (
+      !entry.voided &&
+      entry.date &&
+      isDateString(entry.date) &&
+      entry.date <= asOf
+    ) {
+      const entries = grouped.get(entry.date) ?? [];
+      entries.push(entry);
+      grouped.set(entry.date, entries);
+    }
+  }
+  return Array.from({ length: count }, (_, i) => {
+    const date = shiftDate(start, i);
+    const entries = (grouped.get(date) ?? []).reverse();
+    return {
+      date,
+      entries,
+      minutes: timedStudyLogs(entries, asOf).reduce(
+        (sum, entry) => sum + entry.minutes!,
+        0,
+      ),
+      unknown: entries.filter((entry) => entry.minutes === null).length,
+    };
+  });
 }
 export function studySeries(
   logs: TimeEntry[],

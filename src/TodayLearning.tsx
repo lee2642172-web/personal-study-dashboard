@@ -12,7 +12,7 @@ import { QuickActivity } from "./QuickActivity";
 import { formatT, formatDuration, formatTimeT } from "./timeUnits";
 import { todoGroupItems } from "./todos";
 
-function itemLabel(log: StudyLog, material?: Material): string {
+export function itemLabel(log: StudyLog, material?: Material): string {
   if (!log.item) return "";
   if (material && isEbsCourse(material))
     return `발행일 ${(log.contentDate ?? log.item).replaceAll("-", ".")}`;
