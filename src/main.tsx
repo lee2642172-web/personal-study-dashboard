@@ -31,6 +31,7 @@ import { TaskDetailPage } from "./Tasks";
 import { CalendarPage } from "./Calendar";
 import { DataProvider, useData } from "./state";
 import { SyncButton, SyncBanner, SyncSettings } from "./SyncSettings";
+import { ThemeToggle } from "./ThemeToggle";
 import {
   Home,
   Category,
@@ -45,6 +46,7 @@ import {
 import { exportData } from "./storage";
 import { fieldName } from "./model";
 import "./styles.css";
+import "./theme.css";
 const navigation = [
   { path: "/", label: "HOME", icon: LayoutGrid },
   { path: "/calendar", label: "캘린더", icon: CalendarDays },
@@ -147,7 +149,10 @@ function App() {
             </span>
             <strong>{title}</strong>
           </span>
-          <SyncButton onOpen={() => setSyncOpen(true)} />
+          <div className="topbar-actions">
+            <ThemeToggle />
+            <SyncButton onOpen={() => setSyncOpen(true)} />
+          </div>
         </header>
         <div className="page">
           <SyncBanner onOpen={() => setSyncOpen(true)} />

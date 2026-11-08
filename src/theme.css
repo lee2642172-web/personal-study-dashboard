@@ -1,0 +1,91 @@
+/* Light-mode fallbacks stay in styles.css, preserving the existing palette. */
+:root {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page-bg: #101826;
+  --surface-base: #1a2536;
+  --surface-subtle: #202e42;
+  --surface-hover: #293b53;
+  --surface-emphasis: #304967;
+  --surface-translucent: #1a2536eb;
+  --surface-accent: #233b5b;
+  --surface-success: #1c3a33;
+  --surface-purple: #352d49;
+  --surface-warning: #40382a;
+  --surface-danger: #432c36;
+  --text-primary: #e1e9f5;
+  --text-muted: #afbed4;
+  --text-accent: #abcaff;
+  --text-success: #9edcc0;
+  --text-purple: #d2bdf1;
+  --text-warning: #eacb93;
+  --text-danger: #f1a4b2;
+  --fill-accent: #456bb4;
+  --fill-success: #347864;
+  --fill-purple: #715c9e;
+  --fill-warning: #846331;
+  --fill-danger: #a05265;
+  --border-subtle: #3b4e69;
+  --border-accent: #7395d2;
+  --border-success: #579880;
+  --border-purple: #9d84c1;
+  --border-warning: #b49b6c;
+  --border-danger: #bf8191;
+  --shadow-color: #00000038;
+  --overlay-color: #050b15b8;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border-subtle, #dce5f2);
+  border-radius: 10px;
+  background: var(--surface-subtle, #f7f9fc);
+  color: var(--text-muted, #6d82a3);
+}
+.theme-toggle:hover {
+  background: var(--surface-hover, #edf2fb);
+}
+.v1-dialog {
+  background: var(--surface-base, #fff);
+}
+:root[data-theme="dark"] .primary-button:hover {
+  background: #4d71b9;
+}
+:root[data-theme="dark"] .schedule-day.is-today .schedule-number {
+  background: var(--calendar-day-color, var(--text-accent));
+  color: var(--page-bg);
+}
+:root[data-theme="dark"]
+  .study-bar:is(:hover, .is-selected)
+  .study-bar-fill:not(.is-zero) {
+  background: #8fb5f5;
+}
+:root[data-theme="dark"]
+  :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  border-color: #60728f;
+}
+@media (max-width: 380px) {
+  .topbar-actions {
+    gap: 4px;
+  }
+  .topbar-actions .sync-trigger span {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
