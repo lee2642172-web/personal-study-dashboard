@@ -32,6 +32,7 @@ import { CalendarPage } from "./Calendar";
 import { DataProvider, useData } from "./state";
 import { SyncButton, SyncBanner, SyncSettings } from "./SyncSettings";
 import { ThemeToggle } from "./ThemeToggle";
+import { CodexConnectionPage } from "./CodexConnection";
 import {
   Home,
   Category,
@@ -77,9 +78,10 @@ function App() {
           : location.pathname.startsWith("/materials/")
             ? "/library"
             : location.pathname;
-  const title =
-    navigation.find((n) => n.path === activePath)?.label ??
-    fieldName(fieldId ?? "");
+  const title = location.pathname.startsWith("/connect/")
+    ? "Codex 연결"
+    : (navigation.find((n) => n.path === activePath)?.label ??
+      fieldName(fieldId ?? ""));
   return (
     <div className="app-shell dashboard-v1">
       <aside className="sidebar">
@@ -170,6 +172,7 @@ function App() {
           {syncOpen && <SyncSettings onClose={() => setSyncOpen(false)} />}
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/connect/codex" element={<CodexConnectionPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/english" element={<English />} />
             <Route path="/english/ebs" element={<EbsPage />} />

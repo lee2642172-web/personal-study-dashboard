@@ -35,6 +35,7 @@ type State = SyncView & {
     user: User | null;
     authLoading: boolean;
     authError: string;
+    accessToken: () => Promise<string>;
     configure: (config: CloudConfig) => void;
     clearConfig: () => void;
     login: (email: string) => Promise<void>;
@@ -194,6 +195,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     user,
     authLoading,
     authError,
+    async accessToken() {
+      if (!client || !user || authLoading)
+        throw new Error("로그인 연결을 확인한 뒤 다시 시도해 주세요.");
+      const { data, error } = await client.auth.getSession();
+      if (error || !data.session || data.session.user.id !== user.id)
+        throw new Error("같은 계정으로 다시 로그인해 주세요.");
+      return data.session.access_token;
+    },
     configure(value) {
       const clean = {
         url: value.url.trim().replace(/\/$/, ""),

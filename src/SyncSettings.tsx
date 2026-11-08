@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { Cloud, RefreshCw } from "lucide-react";
 import { useData } from "./state";
 import { syncLabels } from "./sync";
@@ -129,6 +130,9 @@ export function SyncSettings({ onClose }: { onClose: () => void }) {
           기록·진도·과업·일정을 함께 사용합니다.
         </p>
         <RecoveryPanel working={working} />
+        <Link className="text-link" to="/connect/codex" onClick={onClose}>
+          Codex 채팅으로 대시보드 관리 →
+        </Link>
         {!cloud.config ? (
           <>
             <div className="sync-setup-steps">
