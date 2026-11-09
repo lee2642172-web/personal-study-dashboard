@@ -34,10 +34,13 @@ export function EbsReviewPanel({ compact = false }: { compact?: boolean }) {
   const today = useLocalDate();
   const [editing, setEditing] = useState<StudyLog | null>(null);
   const [notice, setNotice] = useState("");
-  const [limit, setLimit] = useState(8);
+  const [limit, setLimit] = useState(3);
+  const [overdueLimit, setOverdueLimit] = useState(3);
   const reviews = ebsReviews(data, today);
   const pending = reviews.filter((r) => r.dueDate <= today && !r.completion);
-  const overdue = pending.filter((r) => r.dueDate < today).length;
+  const overdueReviews = pending.filter((r) => r.dueDate < today);
+  const overdue = overdueReviews.length;
+  const dueToday = pending.filter((r) => r.dueDate === today);
   const completed = reviews.filter((r) => r.completion?.date === today);
   const upcoming = reviews.filter(
     (r) => r.dueDate === nextEbsReviewDate(today) && !r.completion,
@@ -64,56 +67,83 @@ export function EbsReviewPanel({ compact = false }: { compact?: boolean }) {
       </Link>
     );
   }
+  function reviewList(items: EbsReview[], count: number, label: string) {
+    return (
+      <ul className="ebs-review-list" aria-label={label}>
+        {items.slice(0, count).map((review) => (
+          <li key={review.sourceIds[0]}>
+            <ReviewLabel review={review} />
+            <div className="ebs-review-actions">
+              <button
+                className="primary-button"
+                onClick={() => {
+                  const date = localDate(),
+                    id = newId();
+                  update((d) =>
+                    recordEbsReview(d, review.sourceIds[0], date, id),
+                  );
+                  setNotice(
+                    `${review.course.title} · ${dotted(date)} 복습 완료 · 시간은 필요할 때 입력하세요.`,
+                  );
+                }}
+              >
+                복습 완료하기
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    );
+  }
   return (
     <section className="ebs-review-panel" aria-label="EBS 다음 날 복습">
       <header className="ebs-review-heading">
         <div>
           <p className="eyebrow">NEXT DAY REVIEW · {dotted(today)}</p>
-          <h2>오늘 복습할 오디오어학당</h2>
-          <p>실제 학습일의 다음 날에 복습해요. 놓친 복습도 함께 표시합니다.</p>
+          <h2>오디오어학당 복습</h2>
+          <p>
+            오늘 예정된 복습부터 확인하세요. 지난 복습은 필요할 때 펼쳐볼 수
+            있어요.
+          </p>
         </div>
-        <span className="status-pill">
-          미완료 {pending.length}개{overdue ? ` · 지난 복습 ${overdue}개` : ""}
-        </span>
+        <span className="status-pill">오늘 예정 {dueToday.length}개</span>
       </header>
-      {pending.length ? (
-        <ul className="ebs-review-list" aria-label="복습할 회차">
-          {pending.slice(0, limit).map((review) => (
-            <li key={review.sourceIds[0]}>
-              <ReviewLabel review={review} />
-              <div className="ebs-review-actions">
-                <button
-                  className="primary-button"
-                  onClick={() => {
-                    const date = localDate(),
-                      id = newId();
-                    update((d) =>
-                      recordEbsReview(d, review.sourceIds[0], date, id),
-                    );
-                    setNotice(
-                      `${review.course.title} · ${dotted(date)} 복습 완료 · 시간은 필요할 때 입력하세요.`,
-                    );
-                  }}
-                >
-                  복습 완료하기
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+      {dueToday.length ? (
+        <>
+          {reviewList(dueToday, limit, "오늘 예정된 복습 회차")}
+          {dueToday.length > limit && (
+            <button
+              className="text-link"
+              onClick={() => setLimit((n) => n + 3)}
+            >
+              오늘 복습 더 보기 ({dueToday.length - limit}개)
+            </button>
+          )}
+        </>
       ) : (
         <p className="ebs-review-empty">
-          지금 복습할 회차가 없습니다. 학습을 기록하면 다음 날 여기에
-          표시됩니다.
+          오늘 예정된 복습이 없습니다.
+          {overdue > 0
+            ? " 지난 미완료 복습은 아래에서 펼쳐볼 수 있어요."
+            : " 학습을 기록하면 다음 날 여기에 표시됩니다."}
         </p>
       )}
-      {pending.length > limit && (
-        <button className="text-link" onClick={() => setLimit((n) => n + 8)}>
-          복습 목록 더 보기 ({pending.length - limit}개)
-        </button>
+      {overdue > 0 && (
+        <details className="ebs-review-details">
+          <summary>지난 미완료 복습 {overdue}개</summary>
+          {reviewList(overdueReviews, overdueLimit, "지난 미완료 복습 회차")}
+          {overdue > overdueLimit && (
+            <button
+              className="text-link"
+              onClick={() => setOverdueLimit((n) => n + 3)}
+            >
+              지난 복습 더 보기 ({overdue - overdueLimit}개)
+            </button>
+          )}
+        </details>
       )}
       {completed.length > 0 && (
-        <details className="ebs-review-details" open>
+        <details className="ebs-review-details">
           <summary>오늘 복습 완료 {completed.length}개</summary>
           <ul className="ebs-review-list" aria-label="오늘 복습 완료 회차">
             {completed.map((review) => {
