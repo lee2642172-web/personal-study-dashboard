@@ -74,39 +74,32 @@
   font-size: 9px;
   color: var(--text-muted, #7b8ba2);
 }
-.personal-period-day-total {
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.7;
-  margin: 8px 0;
-  overflow-wrap: anywhere;
-}
-.personal-period-compact {
+.personal-period-t-rows {
   display: grid;
-  gap: 5px;
+  gap: 0;
+  margin-top: 8px;
 }
-.personal-period-preview-heading {
+.personal-period-t-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-.personal-period-preview-heading small {
-  font-size: 9px;
-  color: var(--text-muted, #7b8ba2);
+  gap: 5px;
+  height: 24px;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 24px;
+  border-bottom: 1px solid var(--border-subtle, #edf0f5);
 }
 .personal-period-circles {
+  flex: 0 0 13px;
   color: var(--text-danger, #cf6a79);
   font-weight: 700;
-  font-size: 12px;
-  overflow-wrap: anywhere;
+  font-size: 14px;
 }
-.personal-period-preview-text {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
+.personal-period-t-text {
+  min-width: 0;
+  white-space: nowrap;
   overflow: hidden;
-  font-size: 10px;
-  line-height: 1.7;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
 }
 .personal-period-empty {
   color: var(--text-muted, #7b8ba2);

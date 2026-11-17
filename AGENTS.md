@@ -51,3 +51,7 @@ calendar menu and calendar-month chart retain ordinary calendar dates.
 into 1T entries when requested; never round real class/session durations
 up to 1T or invent time for unrecorded days. Regular employment time is
 not automatically added.
+The notebook's visible record unit is exactly one nonwrapping line per 1T:
+1.4T uses two record rows (90m + 36m), even when sourced from five sessions.
+Keep date and total on one header line; never stack separate duration, circle,
+and summary lines. Group/split display rows only; preserve original session data.

@@ -5,19 +5,10 @@ import { ActivityList } from "./StudyTimeDetails";
 import { studyActivityDays } from "./dashboard";
 import { personalPeriod, movePersonalPeriod } from "./personalPeriods";
 import { calendarWeekdays } from "./dates";
-import { formatTimeT } from "./timeUnits";
+import { formatTimeT, formatT } from "./timeUnits";
+import { notebookRows } from "./notebookRows";
 import "./personalPeriods.css";
 
-function circles(minutes: number | null) {
-  if (minutes === null) return "?";
-  if (minutes === 0) return "·";
-  const whole = Math.floor(minutes / 90);
-  return (
-    "○".repeat(Math.min(whole, 8)) +
-    (whole > 8 ? "+" : "") +
-    (minutes % 90 ? "◔" : "")
-  );
-}
 export function PersonalPeriodBoard({
   today,
   onClose,
@@ -85,7 +76,7 @@ export function PersonalPeriodBoard({
           </button>
         </nav>
         <p className="micro-note">
-          ○ 하나 = 1T(90분) · 작은 기록은 묶어서 표시 · 날짜를 누르면 전체 기록
+          한 줄 = 1T(90분) · ◔는 남은 시간 · 날짜를 누르면 원래 기록 전체 보기
         </p>
         <div
           className="personal-period-scroll"
@@ -118,35 +109,34 @@ export function PersonalPeriodBoard({
                   <strong>
                     {Number(day.date.slice(5, 7))}/{Number(day.date.slice(-2))}
                   </strong>
-                  <small>{day.date === today ? "오늘" : `${i + 1}일째`}</small>
-                </span>
-                <span className="personal-period-day-total">
-                  {formatTimeT(day.minutes)}
+                  <small>
+                    {day.date === today ? "오늘 · " : ""}
+                    {formatT(day.minutes)}
+                  </small>
                 </span>
                 {day.entries.length > 0 && (
-                  <span className="personal-period-compact">
-                    <span className="personal-period-preview-heading">
+                  <span className="personal-period-t-rows">
+                    {notebookRows(day.entries).map((row, index) => (
                       <span
-                        className="personal-period-circles"
-                        aria-hidden="true"
+                        className="personal-period-t-row"
+                        key={index}
+                        title={`${formatTimeT(row.minutes)} · ${row.titles.join(" · ")}`}
                       >
-                        {circles(day.minutes)}
+                        <span
+                          className="personal-period-circles"
+                          aria-hidden="true"
+                        >
+                          {row.minutes >= 90 - 1e-8
+                            ? "○"
+                            : row.minutes > 0
+                              ? "◔"
+                              : "·"}
+                        </span>
+                        <span className="personal-period-t-text">
+                          {row.titles.join(" · ")}
+                        </span>
                       </span>
-                      <small>{day.entries.length}건</small>
-                    </span>
-                    <span
-                      className="personal-period-preview-text"
-                      style={{
-                        WebkitLineClamp: Math.min(
-                          6,
-                          Math.max(1, Math.ceil(day.minutes / 90)),
-                        ),
-                      }}
-                    >
-                      {[
-                        ...new Set(day.entries.map((entry) => entry.title)),
-                      ].join(" · ")}
-                    </span>
+                    ))}
                   </span>
                 )}
                 {!day.entries.length && (
