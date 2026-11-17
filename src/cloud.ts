@@ -36,17 +36,27 @@ export function configError(config: CloudConfig) {
   }
   return "Supabase의 Publishable key 또는 기존 anon public key를 입력해 주세요.";
 }
+/** Only validated public connection values may be embedded into the browser build. */
+export function deploymentCloudConfig(env: Record<string, string | undefined>): CloudConfig | null {
+  const config = {
+    url: env.VITE_SUPABASE_URL || env.SUPABASE_URL || "",
+    key: env.VITE_SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_PUBLISHABLE_KEY || "",
+  };
+  return configError(config) ? null : config;
+}
 export function loadCloudConfig(
   env: CloudConfig,
   storage: Pick<Storage, "getItem">,
 ): CloudConfig | null {
-  const saved = storage.getItem(CLOUD_CONFIG_KEY);
-  const value = saved ? JSON.parse(saved) : env;
-  return typeof value?.url === "string" &&
-    typeof value?.key === "string" &&
-    !configError(value)
-    ? value
-    : null;
+  try {
+    const saved = storage.getItem(CLOUD_CONFIG_KEY);
+    const value = saved ? JSON.parse(saved) : null;
+    if (typeof value?.url === "string" && typeof value?.key === "string" && !configError(value))
+      return value;
+  } catch {
+    // A damaged/unavailable device setting must not hide the deployment default.
+  }
+  return configError(env) ? null : env;
 }
 let activeClient: { url: string; key: string; client: SupabaseClient } | null =
   null;
