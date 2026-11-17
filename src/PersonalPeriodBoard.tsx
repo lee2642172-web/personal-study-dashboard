@@ -85,7 +85,7 @@ export function PersonalPeriodBoard({
           </button>
         </nav>
         <p className="micro-note">
-          ○ 하나 = 1T(90분) · ◔ = 1T 미만의 시간 · 실제 기록일 기준
+          ○ 하나 = 1T(90분) · 작은 기록은 묶어서 표시 · 날짜를 누르면 전체 기록
         </p>
         <div
           className="personal-period-scroll"
@@ -123,26 +123,32 @@ export function PersonalPeriodBoard({
                 <span className="personal-period-day-total">
                   {formatTimeT(day.minutes)}
                 </span>
-                <span className="personal-period-records">
-                  {day.entries.map((entry) => (
-                    <span key={entry.id}>
+                {day.entries.length > 0 && (
+                  <span className="personal-period-compact">
+                    <span className="personal-period-preview-heading">
                       <span
                         className="personal-period-circles"
                         aria-hidden="true"
                       >
-                        {circles(entry.minutes)}
+                        {circles(day.minutes)}
                       </span>
-                      <span>
-                        {entry.title}
-                        <small>
-                          {entry.minutes === null
-                            ? "시간 미입력"
-                            : formatTimeT(entry.minutes)}
-                        </small>
-                      </span>
+                      <small>{day.entries.length}건</small>
                     </span>
-                  ))}
-                </span>
+                    <span
+                      className="personal-period-preview-text"
+                      style={{
+                        WebkitLineClamp: Math.min(
+                          6,
+                          Math.max(1, Math.ceil(day.minutes / 90)),
+                        ),
+                      }}
+                    >
+                      {[
+                        ...new Set(day.entries.map((entry) => entry.title)),
+                      ].join(" · ")}
+                    </span>
+                  </span>
+                )}
                 {!day.entries.length && (
                   <small className="personal-period-empty">
                     {day.date > today ? "" : "기록 없음"}

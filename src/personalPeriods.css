@@ -38,7 +38,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  min-height: 155px;
+  min-height: 125px;
   min-width: 0;
   padding: 10px 9px;
   border: 1px solid var(--border-subtle, #e1e7f0);
@@ -81,33 +81,32 @@
   margin: 8px 0;
   overflow-wrap: anywhere;
 }
-.personal-period-records {
+.personal-period-compact {
   display: grid;
-  gap: 10px;
+  gap: 5px;
 }
-.personal-period-records > span {
+.personal-period-preview-heading {
   display: flex;
-  align-items: flex-start;
-  gap: 4px;
-  font-size: 10px;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
+  align-items: center;
+  gap: 6px;
+}
+.personal-period-preview-heading small {
+  font-size: 9px;
+  color: var(--text-muted, #7b8ba2);
 }
 .personal-period-circles {
   color: var(--text-danger, #cf6a79);
   font-weight: 700;
-  max-width: 30%;
+  font-size: 12px;
   overflow-wrap: anywhere;
 }
-.personal-period-records > span > span:last-child {
-  min-width: 0;
-  flex: 1;
-}
-.personal-period-records small {
-  display: block;
-  font-size: 9px;
-  color: var(--text-muted, #7b8ba2);
-  margin-top: 2px;
+.personal-period-preview-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 .personal-period-empty {
   color: var(--text-muted, #7b8ba2);
