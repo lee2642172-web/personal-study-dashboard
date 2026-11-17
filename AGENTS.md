@@ -55,3 +55,7 @@ The notebook's visible record unit is exactly one nonwrapping line per 1T:
 1.4T uses two record rows (90m + 36m), even when sourced from five sessions.
 Keep date and total on one header line; never stack separate duration, circle,
 and summary lines. Group/split display rows only; preserve original session data.
+Daily activity pages use /days/YYYY-MM-DD. Weekly and personal-period day links
+open that page. Its quick entry must save the selected date (not today's date).
+Reuse each source owner for edits/deletes: study logs, todo completions/groups,
+and task work records. Never mirror entries to create daily-page history.

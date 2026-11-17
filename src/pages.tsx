@@ -6,7 +6,9 @@ import { TodoEditor } from "./Todos";
 import { todoGroupItems } from "./todos";
 import { activityEntries } from "./activities";
 import { timedStudyLogs } from "./dashboard";
-import { workLabel } from "./taskWork";
+import { workLabel, deleteTaskRecord } from "./taskWork";
+import { deleteTodo } from "./todos";
+import { formatTimeT } from "./timeUnits";
 import { useLocalDate } from "./useLocalDate";
 import {
   StudyTimeSummary,
@@ -939,13 +941,13 @@ export function LogList({
     </div>
   );
 }
-export function Records() {
-  const { data } = useData(),
+export function Records({ day }: { day?: string } = {}) {
+  const { data, update } = useData(),
     today = useLocalDate();
   const [editing, setEditing] = useState<StudyLog | null>(null),
     [type, setType] = useState("all"),
     [area, setArea] = useState("all"),
-    [date, setDate] = useState("");
+    [date, setDate] = useState(day ?? "");
   const [workEditing, setWorkEditing] = useState<{
     taskId: string;
     recordId: string;
@@ -974,105 +976,138 @@ export function Records() {
   const workTask = data.tasks.find((t) => t.id === workEditing?.taskId),
     workRecord = workTask?.records?.find((r) => r.id === workEditing?.recordId);
   const todo = data.todos?.find((t) => t.id === todoEditing);
+  function removeEntry(entry: ReturnType<typeof activityEntries>[number]) {
+    if (!window.confirm(`‘${entry.title}’ 기록을 삭제할까요?`)) return;
+    update((d) =>
+      entry.source === "study"
+        ? { ...d, logs: d.logs.filter((log) => log.id !== entry.log.id) }
+        : entry.source === "task"
+          ? deleteTaskRecord(d, entry.task.id, entry.record.id)
+          : deleteTodo(d, entry.todo.id),
+    );
+  }
   return (
     <>
-      <PageHeading
-        eyebrow="ACTIVITY LOG"
-        title="학습 기록"
-        description="학습·복습·할 일·과업 작업을 실제 기록일 기준으로 함께 확인하세요."
-        action={
-          <button
-            className="primary-button"
-            onClick={() => setEditing(createLog())}
-          >
-            <Plus size={16} />
-            기록 추가
-          </button>
-        }
-      />
-      <div className="v1-filters">
-        <label>
-          활동 구분
-          <select
-            aria-label="기록 활동 구분"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-          >
-            <option value="all">전체</option>
-            {Object.entries(ActivityLabels).map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-            <option value="task">과업 작업</option>
-            <option value="todo">할 일 완료</option>
-          </select>
-        </label>
-        <label>
-          분야
-          <select
-            aria-label="기록 분야"
-            value={area}
-            onChange={(e) => setArea(e.target.value)}
-          >
-            <option value="all">전체</option>
-            {fields.map((f) => (
-              <option value={f.id} key={f.id}>
-                {f.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          실제 학습 날짜
-          <input
-            aria-label="실제 학습 날짜"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </label>
+      {!day && (
+        <PageHeading
+          eyebrow="ACTIVITY LOG"
+          title="학습 기록"
+          description="학습·복습·할 일·과업 작업을 실제 기록일 기준으로 함께 확인하세요."
+          action={
+            <button
+              className="primary-button"
+              onClick={() => setEditing(createLog())}
+            >
+              <Plus size={16} />
+              기록 추가
+            </button>
+          }
+        />
+      )}
+      {day && day <= today && (
         <button
-          className="text-button"
-          onClick={() => {
-            setType("all");
-            setArea("all");
-            setDate("");
-          }}
+          className="secondary-button"
+          onClick={() => setEditing({ ...createLog(), date: day })}
         >
-          필터 초기화
+          교재·강의 학습 기록 추가
         </button>
-      </div>
+      )}
+      {!day && (
+        <div className="v1-filters">
+          <label>
+            활동 구분
+            <select
+              aria-label="기록 활동 구분"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+            >
+              <option value="all">전체</option>
+              {Object.entries(ActivityLabels).map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+              <option value="task">과업 작업</option>
+              <option value="todo">할 일 완료</option>
+            </select>
+          </label>
+          <label>
+            분야
+            <select
+              aria-label="기록 분야"
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
+            >
+              <option value="all">전체</option>
+              {fields.map((f) => (
+                <option value={f.id} key={f.id}>
+                  {f.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            실제 학습 날짜
+            <input
+              aria-label="실제 학습 날짜"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </label>
+          <button
+            className="text-button"
+            onClick={() => {
+              setType("all");
+              setArea("all");
+              setDate("");
+            }}
+          >
+            필터 초기화
+          </button>
+        </div>
+      )}
       <div
         className="record-time-total"
         role="group"
         aria-label="선택 기록 총 시간"
       >
         <span>{date ? `${date} 총 학습시간` : "선택 기록 총 학습시간"}</span>
-        <strong>{sum(filtered)}분</strong>
+        <strong>
+          {day ? formatTimeT(sum(filtered)) : `${sum(filtered)}분`}
+        </strong>
         <small>
           선택 기록 {filtered.length}건 · 시간 미입력{" "}
           {filtered.filter((e) => e.minutes === null).length}건
         </small>
       </div>
       {filtered.length ? (
-        [...groups].map(([day, entries]) => (
+        [...groups].map(([recordDay, entries]) => (
           <section
             className="activity-day"
-            key={day}
-            aria-label={`${day} 활동 기록`}
+            key={recordDay}
+            aria-label={`${recordDay} 활동 기록`}
           >
-            <header>
-              <h2>{day}</h2>
-              <span>{sum(entries)}분</span>
-            </header>
+            {!day && (
+              <header>
+                <h2>{recordDay}</h2>
+                <span>{sum(entries)}분</span>
+              </header>
+            )}
             {entries.map((entry) =>
               entry.source === "study" ? (
-                <LogList
-                  key={entry.id}
-                  logs={[entry.log]}
-                  onEdit={setEditing}
-                />
+                <div key={entry.id}>
+                  <LogList logs={[entry.log]} onEdit={setEditing} />
+                  {day && (
+                    <button
+                      className="text-link daily-delete"
+                      onClick={() => removeEntry(entry)}
+                      aria-label={`${entry.title} 기록 삭제`}
+                    >
+                      기록 삭제
+                    </button>
+                  )}
+                </div>
               ) : (
                 <article className="activity-work-record" key={entry.id}>
                   <div>
@@ -1124,6 +1159,15 @@ export function Records() {
                   >
                     <Pencil size={16} />
                   </button>
+                  {day && (
+                    <button
+                      className="text-link daily-delete"
+                      onClick={() => removeEntry(entry)}
+                      aria-label={`${entry.title} 기록 삭제`}
+                    >
+                      삭제
+                    </button>
+                  )}
                 </article>
               ),
             )}

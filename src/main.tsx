@@ -32,6 +32,7 @@ import { CalendarPage } from "./Calendar";
 import { DataProvider, useData } from "./state";
 import { SyncButton, SyncBanner, SyncSettings } from "./SyncSettings";
 import { ThemeToggle } from "./ThemeToggle";
+import { DayPage } from "./DayPage";
 import { RefreshButton } from "./RefreshButton";
 import { CodexConnectionPage } from "./CodexConnection";
 import {
@@ -74,11 +75,13 @@ function App() {
       ? "/languages"
       : location.pathname.startsWith("/fields/")
         ? "/certifications"
-        : location.pathname.startsWith("/tasks/")
-          ? "/tasks"
-          : location.pathname.startsWith("/materials/")
-            ? "/library"
-            : location.pathname;
+        : location.pathname.startsWith("/days/")
+          ? "/records"
+          : location.pathname.startsWith("/tasks/")
+            ? "/tasks"
+            : location.pathname.startsWith("/materials/")
+              ? "/library"
+              : location.pathname;
   const title = location.pathname.startsWith("/connect/")
     ? "Codex 연결"
     : (navigation.find((n) => n.path === activePath)?.label ??
@@ -174,6 +177,7 @@ function App() {
           {syncOpen && <SyncSettings onClose={() => setSyncOpen(false)} />}
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/days/:date" element={<DayPage />} />
             <Route path="/connect/codex" element={<CodexConnectionPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/english" element={<English />} />

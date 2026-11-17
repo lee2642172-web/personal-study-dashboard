@@ -1,0 +1,48 @@
+.daily-date-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.daily-date-nav a {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+}
+.daily-date-nav input {
+  padding: 9px;
+  border: 1px solid var(--border-subtle, #dce5f2);
+  border-radius: 8px;
+  background: var(--surface-base, #fff);
+  color: var(--text-primary, #34435b);
+}
+.daily-quick-record {
+  margin-bottom: 18px;
+}
+.daily-quick-record h2 {
+  font-size: 15px;
+  margin-bottom: 14px;
+}
+.daily-page .record-time-total {
+  margin-top: 18px;
+}
+.daily-delete {
+  margin: 4px 0 14px;
+  color: var(--text-danger, #c66a79);
+}
+.daily-page .activity-work-record {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.daily-page .activity-work-record > div {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.daily-page .record-time-total strong {
+  overflow-wrap: anywhere;
+}
+.daily-page .v1-heading h1 {
+  overflow-wrap: anywhere;
+}

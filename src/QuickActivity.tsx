@@ -7,7 +7,8 @@ import { recordQuickActivity } from "./quickActivity";
 import { deleteTodo } from "./todos";
 import { DEFAULT_RECORD_MINUTES, formatTimeT } from "./timeUnits";
 
-export function QuickActivity() {
+export function QuickActivity({ recordDate }: { recordDate?: string } = {}) {
+  const recordLabel = recordDate ? "이 날짜" : "오늘";
   const { data, update } = useData();
   const [title, setTitle] = useState(""),
     [minutes, setMinutes] = useState(String(DEFAULT_RECORD_MINUTES));
@@ -34,9 +35,13 @@ export function QuickActivity() {
     submitting.current = true;
     try {
       const id = draftId.current,
-        date = localDate();
+        date = recordDate ?? localDate();
       update((data) =>
-        recordQuickActivity(data, { id, title: text, date, minutes: time }),
+        recordQuickActivity(
+          data,
+          { id, title: text, date, minutes: time },
+          localDate(),
+        ),
       );
       setLast(id);
       setTitle("");
@@ -54,14 +59,14 @@ export function QuickActivity() {
     <div className="today-quick-record">
       <form
         className="today-quick-form"
-        aria-label="오늘 기록 바로 추가"
+        aria-label={`${recordLabel} 기록 바로 추가`}
         onSubmit={submit}
       >
         <label className="today-quick-title">
-          <span className="sr-only">오늘 기록 내용</span>
+          <span className="sr-only">{recordLabel} 기록 내용</span>
           <input
             type="text"
-            aria-label="오늘 기록 내용"
+            aria-label={`${recordLabel} 기록 내용`}
             required
             maxLength={300}
             placeholder="무엇을 했나요? 한 줄로 기록하세요"
@@ -73,10 +78,10 @@ export function QuickActivity() {
           />
         </label>
         <label className="today-quick-minutes">
-          <span className="sr-only">오늘 기록 시간 (분)</span>
+          <span className="sr-only">{recordLabel} 기록 시간 (분)</span>
           <input
             type="number"
-            aria-label="오늘 기록 시간 (분)"
+            aria-label={`${recordLabel} 기록 시간 (분)`}
             min="0"
             step="1"
             inputMode="numeric"
@@ -100,7 +105,8 @@ export function QuickActivity() {
       </form>
       <div className="today-quick-feedback">
         <p role="status" aria-live="polite">
-          {notice || "기본 90분 = 1T · 오늘 날짜로 기록하며, 비우면 0분입니다."}
+          {notice ||
+            `기본 90분 = 1T · ${recordDate ?? "오늘 날짜"}로 기록하며, 비우면 0분입니다.`}
         </p>
         {canUndo && (
           <button

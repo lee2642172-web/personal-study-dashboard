@@ -1,7 +1,8 @@
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useData } from "./state";
 import { Dialog } from "./ui";
-import { ActivityList } from "./StudyTimeDetails";
+
 import { studyActivityDays } from "./dashboard";
 import { personalPeriod, movePersonalPeriod } from "./personalPeriods";
 import { calendarWeekdays } from "./dates";
@@ -76,7 +77,8 @@ export function PersonalPeriodBoard({
           </button>
         </nav>
         <p className="micro-note">
-          한 줄 = 1T(90분) · ◔는 남은 시간 · 날짜를 누르면 원래 기록 전체 보기
+          한 줄 = 1T(90분) · ◔는 남은 시간 · 날짜를 누르면 하루 기록 페이지로
+          이동
         </p>
         <div
           className="personal-period-scroll"
@@ -96,14 +98,13 @@ export function PersonalPeriodBoard({
           </div>
           <div className="personal-period-grid">
             {days.map((day, i) => (
-              <button
-                type="button"
+              <Link
+                to={`/days/${day.date}`}
                 key={day.date}
                 className={`personal-period-day ${day.date === today ? "is-today" : ""} ${day.date === selected.date ? "is-selected" : ""} ${i % 7 === 5 ? "is-saturday" : i % 7 === 6 ? "is-sunday" : ""}`}
                 aria-label={`${day.date} · ${day.entries.length}건 · ${formatTimeT(day.minutes)}`}
-                aria-pressed={day.date === selected.date}
                 aria-current={day.date === today ? "date" : undefined}
-                onClick={() => setSelectedDate(day.date)}
+                onClick={onClose}
               >
                 <span className="personal-period-day-heading">
                   <strong>
@@ -144,23 +145,10 @@ export function PersonalPeriodBoard({
                     {day.date > today ? "" : "기록 없음"}
                   </small>
                 )}
-              </button>
+              </Link>
             ))}
           </div>
         </div>
-        <section
-          className="study-selected-records"
-          aria-labelledby="personal-selected-date"
-        >
-          <div className="study-selected-heading">
-            <h3 id="personal-selected-date">
-              {selected.date.replaceAll("-", ".")} ·{" "}
-              {Math.floor(days.indexOf(selected) / 7) + 1}주째
-            </h3>
-            <span>{formatTimeT(selected.minutes)}</span>
-          </div>
-          <ActivityList entries={selected.entries} />
-        </section>
       </div>
     </Dialog>
   );

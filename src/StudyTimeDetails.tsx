@@ -150,14 +150,13 @@ export function StudyTimeDetails({
             >
               <div className="study-week-grid">
                 {days.map((day, index) => (
-                  <button
-                    type="button"
+                  <Link
+                    to={`/days/${day.date}`}
                     key={day.date}
                     className={`study-week-day ${index === 5 ? "is-saturday" : index === 6 ? "is-sunday" : ""} ${day.date === today ? "is-today" : ""} ${day.date === selected.date ? "is-selected" : ""}`}
                     aria-label={`${day.date} ${calendarWeekdays[index]}요일 · ${day.entries.length}건 · ${formatTimeT(day.minutes)}`}
-                    aria-pressed={day.date === selected.date}
                     aria-current={day.date === today ? "date" : undefined}
-                    onClick={() => setSelectedDate(day.date)}
+                    onClick={onClose}
                   >
                     <span className="study-week-weekday">
                       {calendarWeekdays[index]}
@@ -188,34 +187,43 @@ export function StudyTimeDetails({
                       )}
                       {!day.entries.length && <small>기록 없음</small>}
                     </span>
-                  </button>
+                  </Link>
                 ))}
               </div>
             </div>
           </>
         )}
-        <section
-          className="study-selected-records"
-          aria-labelledby="study-selected-date"
-        >
-          <div className="study-selected-heading">
-            <h3 id="study-selected-date">
-              {selected.date.replaceAll("-", ".")} 기록
-            </h3>
-            <span>
-              {selected.entries.length}건 · {formatTimeT(selected.minutes)}
-            </span>
-          </div>
-          <ActivityList entries={selected.entries} />
-          {selected.unknown > 0 && (
-            <p className="micro-note">
-              시간 미입력 {selected.unknown}건은 합계에서 제외됩니다.
-            </p>
-          )}
-        </section>
+        {mode === "today" && (
+          <section
+            className="study-selected-records"
+            aria-labelledby="study-selected-date"
+          >
+            <div className="study-selected-heading">
+              <h3 id="study-selected-date">
+                {selected.date.replaceAll("-", ".")} 기록
+              </h3>
+              <span>
+                {selected.entries.length}건 · {formatTimeT(selected.minutes)}
+              </span>
+            </div>
+            <ActivityList entries={selected.entries} />
+            <Link
+              className="text-link"
+              to={`/days/${selected.date}`}
+              onClick={onClose}
+            >
+              이 날짜의 하루 페이지 →
+            </Link>
+            {selected.unknown > 0 && (
+              <p className="micro-note">
+                시간 미입력 {selected.unknown}건은 합계에서 제외됩니다.
+              </p>
+            )}
+          </section>
+        )}
         <p className="micro-note">
-          실제 기록일 기준 · 1T = 90분 · 기록을 누르면 해당 학습 또는 과업
-          화면으로 이동합니다.
+          실제 기록일 기준 · 1T = 90분 · 날짜를 누르면 하루 기록 페이지로
+          이동합니다.
         </p>
       </div>
     </Dialog>
