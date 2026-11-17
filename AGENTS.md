@@ -59,3 +59,6 @@ Daily activity pages use /days/YYYY-MM-DD. Weekly and personal-period day links
 open that page. Its quick entry must save the selected date (not today's date).
 Reuse each source owner for edits/deletes: study logs, todo completions/groups,
 and task work records. Never mirror entries to create daily-page history.
+Notebook previews use notebookLabels.ts for concise course/date/Unit labels;
+preserve exact original titles in stored data and daily pages. EBS course
+labels for the same publication date collapse visually, never as saved records.

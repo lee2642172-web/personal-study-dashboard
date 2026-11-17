@@ -8,6 +8,7 @@ import { personalPeriod, movePersonalPeriod } from "./personalPeriods";
 import { calendarWeekdays } from "./dates";
 import { formatTimeT, formatT } from "./timeUnits";
 import { notebookRows } from "./notebookRows";
+import { notebookLabel } from "./notebookLabels";
 import "./personalPeriods.css";
 
 export function PersonalPeriodBoard({
@@ -103,6 +104,7 @@ export function PersonalPeriodBoard({
                 key={day.date}
                 className={`personal-period-day ${day.date === today ? "is-today" : ""} ${day.date === selected.date ? "is-selected" : ""} ${i % 7 === 5 ? "is-saturday" : i % 7 === 6 ? "is-sunday" : ""}`}
                 aria-label={`${day.date} · ${day.entries.length}건 · ${formatTimeT(day.minutes)}`}
+                title={day.entries.map((entry) => entry.title).join("\n")}
                 aria-current={day.date === today ? "date" : undefined}
                 onClick={onClose}
               >
@@ -117,7 +119,12 @@ export function PersonalPeriodBoard({
                 </span>
                 {day.entries.length > 0 && (
                   <span className="personal-period-t-rows">
-                    {notebookRows(day.entries).map((row, index) => (
+                    {notebookRows(
+                      day.entries.map((entry) => ({
+                        ...entry,
+                        title: notebookLabel(entry, data.materials),
+                      })),
+                    ).map((row, index) => (
                       <span
                         className="personal-period-t-row"
                         key={index}
@@ -134,8 +141,13 @@ export function PersonalPeriodBoard({
                               : "·"}
                         </span>
                         <span className="personal-period-t-text">
-                          {row.titles.join(" · ")}
+                          {row.titles[0]}
                         </span>
+                        {row.titles.length > 1 && (
+                          <small className="personal-period-more">
+                            +{row.titles.length - 1}
+                          </small>
+                        )}
                       </span>
                     ))}
                   </span>
