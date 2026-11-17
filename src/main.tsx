@@ -32,6 +32,7 @@ import { CalendarPage } from "./Calendar";
 import { DataProvider, useData } from "./state";
 import { SyncButton, SyncBanner, SyncSettings } from "./SyncSettings";
 import { ThemeToggle } from "./ThemeToggle";
+import { RefreshButton } from "./RefreshButton";
 import { CodexConnectionPage } from "./CodexConnection";
 import {
   Home,
@@ -152,6 +153,7 @@ function App() {
             <strong>{title}</strong>
           </span>
           <div className="topbar-actions">
+            <RefreshButton />
             <ThemeToggle />
             <SyncButton onOpen={() => setSyncOpen(true)} />
           </div>
