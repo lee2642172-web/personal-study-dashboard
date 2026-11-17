@@ -14,12 +14,24 @@ import { Progress } from "./ui";
 import { homeEnglishMaterialProgress } from "./englishProgress";
 import { formatT, formatDuration, formatTimeT } from "./timeUnits";
 import { StudyTimeDetails } from "./StudyTimeDetails";
+import { PersonalPeriodBoard } from "./PersonalPeriodBoard";
+import { personalPeriod } from "./personalPeriods";
+import { studyActivityDays } from "./dashboard";
 
 export function StudyTimeSummary() {
   const { data } = useData(),
     today = useLocalDate();
   const summary = studySummary(dashboardTimeEntries(data), today);
-  const [detail, setDetail] = useState<"today" | "week" | null>(null);
+  const period = personalPeriod(today);
+  const periodMinutes = studyActivityDays(
+    data,
+    today,
+    period.start,
+    period.count,
+  ).reduce((sum, day) => sum + day.minutes, 0);
+  const [detail, setDetail] = useState<"today" | "week" | "period" | null>(
+    null,
+  );
   return (
     <>
       <section className="study-time-summary" aria-label="학습시간 요약">
@@ -38,9 +50,9 @@ export function StudyTimeSummary() {
           },
           {
             label: "이번 달 학습시간",
-            minutes: summary.month,
-            note: `${Number(today.slice(5, 7))}월 1일 ~ 오늘`,
-            mode: null,
+            minutes: periodMinutes,
+            note: `${period.label} · ${Number(period.start.slice(5, 7))}/${Number(period.start.slice(-2))} ~ ${Number(period.end.slice(5, 7))}/${Number(period.end.slice(-2))}`,
+            mode: "period" as const,
           },
         ].map(({ label, minutes, note, mode }) => {
           const content = (
@@ -56,7 +68,9 @@ export function StudyTimeSummary() {
                   <span className="study-time-open-hint">
                     {mode === "today"
                       ? "기록 목록 보기 ↗"
-                      : "주간 캘린더 보기 ↗"}
+                      : mode === "week"
+                        ? "주간 캘린더 보기 ↗"
+                        : "28칸 기록판 보기 ↗"}
                   </span>
                 )}
               </p>
@@ -80,13 +94,17 @@ export function StudyTimeSummary() {
           );
         })}
       </section>
-      {detail && (
-        <StudyTimeDetails
-          key={detail}
-          mode={detail}
-          today={today}
-          onClose={() => setDetail(null)}
-        />
+      {detail === "period" ? (
+        <PersonalPeriodBoard today={today} onClose={() => setDetail(null)} />
+      ) : (
+        detail && (
+          <StudyTimeDetails
+            key={detail}
+            mode={detail}
+            today={today}
+            onClose={() => setDetail(null)}
+          />
+        )
       )}
     </>
   );

@@ -14,7 +14,7 @@ import { todoGroupItems } from "./todos";
 import { formatTimeT } from "./timeUnits";
 import "./studyTimeDetails.css";
 
-function ActivityList({ entries }: { entries: ActivityEntry[] }) {
+export function ActivityList({ entries }: { entries: ActivityEntry[] }) {
   const { data } = useData();
   if (!entries.length)
     return <p className="study-detail-empty">이 날짜에는 기록이 없습니다.</p>;

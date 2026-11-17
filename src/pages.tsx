@@ -1,3 +1,4 @@
+import { personalPeriod } from "./personalPeriods";
 import { VocabularySummary } from "./Vocabulary";
 import { isEeaMaterial } from "./catalogs/eea";
 import { LanguageTasks, TaskBoard, WorkRecordForm } from "./Tasks";
@@ -245,11 +246,17 @@ function FieldCards({
   );
 }
 export function Home() {
+  const personal = personalPeriod(useLocalDate());
   return (
     <>
       <PageHeading
         eyebrow="LEARNING OVERVIEW"
         title="학습 상황판"
+        action={
+          <span className="personal-period-badge">
+            {personal.label} · {personal.week}주째
+          </span>
+        }
         description="학습·할 일·과업 작업의 누적시간과 강의 진도를 한눈에 확인하세요."
       />
       <StudyTimeSummary />
