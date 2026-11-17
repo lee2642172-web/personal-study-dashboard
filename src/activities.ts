@@ -57,7 +57,7 @@ export function activityEntries(data: DashboardData): ActivityEntry[] {
         date: record.date,
         minutes: record.minutes ?? null,
         area: task.area,
-        title: task.title,
+        title: record.scope?.trim() || task.title,
         task,
         record,
       })),
